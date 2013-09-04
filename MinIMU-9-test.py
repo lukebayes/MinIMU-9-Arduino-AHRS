@@ -46,20 +46,20 @@ from time import time
 grad2rad = 3.141592/180.0
 
 # Check your COM port and baud rate
-ser = serial.Serial(port='COM9',baudrate=115200, timeout=1)
+ser = serial.Serial(port='/dev/tty.usbmodemfd121', baudrate=115200, timeout=1)
 
 # Main scene
-scene=display(title="Pololu MinIMU-9 + Arduino AHRS")
-scene.range=(1.2,1.2,1.2)
+scene = display(title="Pololu MinIMU-9 + Arduino AHRS")
+scene.range = (1.2,1.2,1.2)
 #scene.forward = (0,-1,-0.25)
 scene.forward = (1,0,-0.25)
-scene.up=(0,0,1)
+scene.up = (0,0,1)
 
 # Second scene (Roll, Pitch, Yaw)
 scene2 = display(title='Pololu MinIMU-9 + Arduino AHRS',x=0, y=0, width=500, height=200,center=(0,0,0), background=(0,0,0))
-scene2.range=(1,1,1)
-scene.width=500
-scene.y=200
+scene2.range = (1,1,1)
+scene.width = 500
+scene.y = 200
 
 scene2.select()
 #Roll, Pitch, Yaw
@@ -110,11 +110,15 @@ f = open("Serial"+str(time())+".txt", 'w')
 roll=0
 pitch=0
 yaw=0
+
+sleep(.2)
+
 while 1:
+    sleep(.001)
     line = ser.readline()
     if line.find("!ANG:") != -1:          # filter out incomplete (invalid) lines
         line = line.replace("!ANG:","")   # Delete "!ANG:"
-        print line
+        #print line
         f.write(line)                     # Write to the output log file
         words = string.split(line,",")    # Fields split
         if len(words) > 2:
@@ -125,22 +129,22 @@ while 1:
             except:
                 print "Invalid line"
 
-            axis=(cos(pitch)*cos(yaw),-cos(pitch)*sin(yaw),sin(pitch)) 
-            up=(sin(roll)*sin(yaw)+cos(roll)*sin(pitch)*cos(yaw),sin(roll)*cos(yaw)-cos(roll)*sin(pitch)*sin(yaw),-cos(roll)*cos(pitch))
-            platform.axis=axis
-            platform.up=up
-            platform.length=1.0
-            platform.width=0.65
-            plat_arrow.axis=axis
-            plat_arrow.up=up
-            plat_arrow.length=0.8
-            p_line.axis=axis
-            p_line.up=up
-            cil_roll.axis=(0.2*cos(roll),0.2*sin(roll),0)
-            cil_roll2.axis=(-0.2*cos(roll),-0.2*sin(roll),0)
-            cil_pitch.axis=(0.2*cos(pitch),0.2*sin(pitch),0)
-            cil_pitch2.axis=(-0.2*cos(pitch),-0.2*sin(pitch),0)
-            arrow_course.axis=(0.2*sin(yaw),0.2*cos(yaw),0)
+            axis = (cos(pitch)*cos(yaw),-cos(pitch)*sin(yaw),sin(pitch)) 
+            up = (sin(roll)*sin(yaw)+cos(roll)*sin(pitch)*cos(yaw),sin(roll)*cos(yaw)-cos(roll)*sin(pitch)*sin(yaw),-cos(roll)*cos(pitch))
+            platform.axis = axis
+            platform.up = up
+            platform.length = 1.0
+            platform.width = 0.65
+            plat_arrow.axis = axis
+            plat_arrow.up = up
+            plat_arrow.length = 0.8
+            p_line.axis = axis
+            p_line.up = up
+            cil_roll.axis = (0.2*cos(roll),0.2*sin(roll),0)
+            cil_roll2.axis = (0.2*cos(roll),-0.2*sin(roll),0)
+            cil_pitch.axis = (0.2*cos(pitch),0.2*sin(pitch),0)
+            cil_pitch2.axis = (0.2*cos(pitch),-0.2*sin(pitch),0)
+            arrow_course.axis = (0.2*sin(yaw),0.2*cos(yaw),0)
             L1.text = str(float(words[0]))
             L2.text = str(float(words[1]))
             L3.text = str(float(words[2]))        

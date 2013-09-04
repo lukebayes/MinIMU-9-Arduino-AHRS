@@ -35,7 +35,7 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 // Positive pitch : nose up
 // Positive roll : right wing down
 // Positive yaw : clockwise
-int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
+// int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
 // Uncomment the below line to use this axis definition: 
    // X axis pointing forward
    // Y axis pointing to the left 
@@ -43,7 +43,7 @@ int SENSOR_SIGN[9] = {1,1,1,-1,-1,-1,1,1,1}; //Correct directions x,y,z - gyro, 
 // Positive pitch : nose down
 // Positive roll : right wing down
 // Positive yaw : counterclockwise
-//int SENSOR_SIGN[9] = {1,-1,-1,-1,1,1,1,-1,-1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
+int SENSOR_SIGN[9] = {1,-1,-1,-1,1,1,1,-1,-1}; //Correct directions x,y,z - gyro, accelerometer, magnetometer
 
 // tested with Arduino Uno with ATmega328 and Arduino Duemilanove with ATMega168
 
@@ -160,7 +160,7 @@ void setup()
   Serial.println("Pololu MinIMU-9 + Arduino AHRS");
 
   digitalWrite(STATUS_LED,LOW);
-  delay(1500);
+  delay(3000);
  
   Accel_Init();
   Compass_Init();
@@ -211,7 +211,7 @@ void loop() //Main Loop
     Read_Gyro();   // This read gyro data
     Read_Accel();     // Read I2C accelerometer
     
-    if (counter > 5)  // Read compass data at 10Hz... (5 loop runs)
+    if (false && counter > 5)  // Read compass data at 10Hz... (5 loop runs)
       {
       counter=0;
       Read_Compass();    // Read I2C magnetometer
