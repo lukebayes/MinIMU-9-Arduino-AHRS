@@ -1,5 +1,6 @@
 
 #include <MinIMU9AHRS.h>
+#include <Wire.h>
 
 // Instantiate the AHRS
 MinIMU9AHRS ahrs;
@@ -12,6 +13,9 @@ void setup()
 
 void loop()
 {
+  Serial.begin(115200);
+  Wire.begin();
+
   EulerAngle euler = ahrs.getEuler();
 
   // Print the Euler values:

@@ -32,6 +32,13 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #include "LSM303.h"
 #include "L3G.h"
 
+#define ACC_ADDRESS_SA0_A_HIGH (0x32 >> 1)
+#define L3GD20_ADDRESS_SA0_HIGH   (0xD6 >> 1)
+
+// LSM303 accelerometer: 8g sensitivity
+// 3.8 mg/digit; 1 g = 256
+// This is equivalent to 1G in the raw data coming from the accelerometer.
+#define GRAVITY 256
 
 /**
  * Interpreted Euler angle from the raw values.
@@ -41,18 +48,13 @@ typedef struct EulerAngle {
 };
 
 
-/**
- * Raw values from the accelerometer, gyroscope and magnetometer.
- */
-typedef struct IMUValues {
-  float gyro[3];
-  float accel[3];
-  float compass[3];
-};
-
-
 class MinIMU9AHRS {
   public:
+    typedef struct vector
+    {
+      float x, y, z;
+    };
+
     /**
      * The Attitude, Heading Reference System.
      */
@@ -69,11 +71,36 @@ class MinIMU9AHRS {
     EulerAngle getEuler(void);
 
     /**
-     * Get the raw values from the AHRS.
+     * Update the readings from all inputs.
      */
-    IMUValues getIMUValues(void);
+    void updateReadings(void);
 
   private:
+
+    /**
+     * Initialize default instance values.
+     */
+    void _initValues(void);
+    
+    /**
+     * Initialize gyroscope.
+     */
+    void _initGyro(void);
+
+    /**
+     * Initialize accelerometer.
+     */
+    void _initAccelerometer(void);
+
+    /**
+     * Initialize readings.
+     */
+    void _initReadings(void);
+
+    /**
+     * Update raw values.
+     */
+    void _updateRawValues(void);
 
     /**
      * Accelerometer instance.
@@ -83,37 +110,65 @@ class MinIMU9AHRS {
     /**
      * Gyroscope instance.
      */
-    L3G _gyro;
+    L3G _gyroscope;
 
     /**
      * Accelerometer values as a vector.
      */
-    float _accelVector[3];
+    vector _accelVector;
+
+    /**
+     * Compass values as a vector.
+     */
+    vector _compassVector;
 
     /**
      * Gyroscope values as a vector.
      */
-    float _gyroVector[3];
+    vector _gyroVector;
 
     /**
      * Corrected gyro vector data.
      */
-    float _omegaVector[3];
+    vector _omegaVector;
 
     /**
      * Proportional correction.
      */
-    float _omegaP[3];
+    vector _omegaP;
 
     /**
      * Omega integration.
      */
-    float _omegaI[3];
+    vector _omegaI;
 
     /**
      * Omega result.
      */
-    float _omega[3];
+    vector _omega;
+
+    int _rawValues[6];
+
+    /**
+     * Array that stores the offsets of the sensors.
+     */
+    int _offsets[6];
+
+    /**
+     * Array that indicates the direction (or sign) of each axis for each
+     * of the sensors (Gyro and Accelerometer).
+     */
+    int _sensorDirection[9];
+
+    /**
+     * Time of last reading in milliseconds.
+     */
+    int lastReadingTime;
+
+    /**
+     * Time of current reading in milliseconds.
+     */
+    int currentReadingTime;
 };
 
 #endif
