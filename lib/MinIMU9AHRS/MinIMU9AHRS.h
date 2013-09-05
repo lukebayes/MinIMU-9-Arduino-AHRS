@@ -40,6 +40,9 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 // This is equivalent to 1G in the raw data coming from the accelerometer.
 #define GRAVITY 256
 
+// Minimum timeout in milliseconds that must elapse between readings.
+#define DEFAULT_MIN_TIMEOUT_MILLIS 10
+
 /**
  * Interpreted Euler angle from the raw values.
  */
@@ -95,12 +98,22 @@ class MinIMU9AHRS {
     /**
      * Initialize readings.
      */
-    void _initReadings(void);
+    void _initOffsets(void);
 
     /**
-     * Update raw values.
+     * Read the gyroscope and update values accordingly.
      */
-    void _updateRawValues(void);
+    void _readGyro(void);
+
+    /**
+     * Read the accelerometer and update values accordingly.
+     */
+    void _readAccelerometer(void);
+
+    /**
+     * Read the compass and update values accordingly.
+     */
+    void _readCompass(void);
 
     /**
      * Accelerometer instance.
@@ -163,12 +176,27 @@ class MinIMU9AHRS {
     /**
      * Time of last reading in milliseconds.
      */
-    int lastReadingTime;
+    int _lastReadingTime;
 
     /**
      * Time of current reading in milliseconds.
      */
-    int currentReadingTime;
+    int _currentReadingTime;
+
+    /**
+     * Minimum reading timeout in milliseconds.
+     */
+    int _minTimeoutMillis;
+
+    /**
+     * True if the readings have finished initialization.
+     */
+    bool _isInitialized;
+
+    /**
+     * Seconds since last reading.
+     */
+    float _secondsSinceLastReading;
 };
 
 #endif

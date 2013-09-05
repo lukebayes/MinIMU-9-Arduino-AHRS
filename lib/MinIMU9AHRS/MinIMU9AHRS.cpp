@@ -49,7 +49,7 @@ void MinIMU9AHRS::init(void)
   _initValues();
   _initGyro();
   _initAccelerometer();
-  _initReadings();
+  _initOffsets();
 };
 
 
@@ -58,6 +58,8 @@ void MinIMU9AHRS::init(void)
  */
 void MinIMU9AHRS::_initValues(void)
 {
+  _minTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
+
   int _offsets[6] = {0, 0, 0, 0, 0, 0};
 
   // NOTE(lbayes): Invert the sign of any of these values to flip that axis
@@ -97,12 +99,12 @@ void MinIMU9AHRS::_initAccelerometer()
 };
 
 
-void MinIMU9AHRS::_initReadings()
+void MinIMU9AHRS::_initOffsets()
 {
-  lastReadingTime = millis();
+  _lastReadingTime = millis() - _minTimeoutMillis;
 
   for (int i = 0; i < 32; i++) {
-    _updateRawValues();
+    updateReadings();
     for (int y = 0; y < 6; y++) {
       _offsets[y] += _rawValues[y];
     }
@@ -114,6 +116,8 @@ void MinIMU9AHRS::_initReadings()
   }
     
   _offsets[5] -= GRAVITY * _sensorDirection[5];
+
+  _isInitialized = true;
   
   // Serial.println("Offset:");
   // for (int y = 0; y < 6; y++) {
@@ -139,36 +143,65 @@ EulerAngle MinIMU9AHRS::getEuler(void)
  */
 void MinIMU9AHRS::updateReadings(void)
 {
-  _updateRawValues();
+  _currentReadingTime = millis();
+  // NOTE(lbayes): Do not reach down to the hardware too frequently.
+  if (_isInitialized && (_currentReadingTime - _lastReadingTime) >
+      _minTimeoutMillis) {
+    return;
+  }
 
-  _gyroVector.x = _gyroscope.g.x;
-  _gyroVector.y = _gyroscope.g.y;
-  _gyroVector.z = _gyroscope.g.z;
+  _readGyro();
+  _readAccelerometer();
+  _readCompass();
 
-  _accelVector.x = _accelerometer.a.x;
-  _accelVector.y = _accelerometer.a.y;
-  _accelVector.z = _accelerometer.a.z;
-
-  _compassVector.x = _accelerometer.m.x;
-  _compassVector.y = _accelerometer.m.y;
-  _compassVector.z = _accelerometer.m.z;
+  _lastReadingTime = _currentReadingTime;
 };
 
 
-void MinIMU9AHRS::_updateRawValues(void)
+/**
+ * Read the gyro and update values accordingly.
+ */
+void MinIMU9AHRS::_readGyro(void)
 {
   _gyroscope.read();
-  _accelerometer.readAcc();
-  _accelerometer.readMag();
-
   _rawValues[0] = _gyroscope.g.x;
   _rawValues[1] = _gyroscope.g.y;
   _rawValues[2] = _gyroscope.g.z;
+
+  _gyroVector.x = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
+  _gyroVector.y = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
+  _gyroVector.z = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
+};
+
+
+/**
+ * Read the accelerometer and update values accordingly.
+ */
+void MinIMU9AHRS::_readAccelerometer(void)
+{
+  _accelerometer.readAcc();
   _rawValues[3] = _accelerometer.a.x;
   _rawValues[4] = _accelerometer.a.y;
   _rawValues[5] = _accelerometer.a.z;
+
+  _accelVector.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
+  _accelVector.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
+  _accelVector.z = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
+};
+
+
+/**
+ * Read the compass and update values accordingly.
+ */
+void MinIMU9AHRS::_readCompass(void)
+{
+  _accelerometer.readMag();
   _rawValues[6] = _accelerometer.m.x;
   _rawValues[7] = _accelerometer.m.y;
   _rawValues[8] = _accelerometer.m.z;
+
+  _compassVector.x = _sensorDirection[6] * _rawValues[6];
+  _compassVector.y = _sensorDirection[7] * _rawValues[7];
+  _compassVector.z = _sensorDirection[8] * _rawValues[8];
 };
 
