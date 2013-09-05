@@ -32,6 +32,7 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #include "LSM303.h"
 #include "L3G.h"
 
+
 /**
  * Interpreted Euler angle from the raw values.
  */
@@ -39,12 +40,14 @@ typedef struct EulerAngle {
   float roll, pitch, yaw;
 };
 
+
 /**
  * Raw values from the accelerometer, gyroscope and magnetometer.
  */
 typedef struct IMUValues {
   float ax, ay, az, gx, gy, gz, mx, my, mz;
 };
+
 
 class MinIMU9AHRS {
   public:

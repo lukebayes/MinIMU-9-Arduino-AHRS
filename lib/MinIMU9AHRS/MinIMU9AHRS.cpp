@@ -39,6 +39,7 @@ MinIMU9AHRS::MinIMU9AHRS()
 {
 };
 
+
 /**
  * Initialize the AHRS.
  */
@@ -46,12 +47,14 @@ void MinIMU9AHRS::init(void)
 {
 };
 
+
 /**
  * Get the most recent Euler angle (roll, pitch and yaw) from the AHRS.
  */
 EulerAngle MinIMU9AHRS::getEuler(void)
 {
 };
+
 
 /**
  * Get the raw values from the AHRS.

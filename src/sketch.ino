@@ -12,9 +12,9 @@ void setup()
 
 void loop()
 {
-  // Loop the AHRS at system interval.
   EulerAngle euler = ahrs.getEuler();
 
+  // Print the Euler values:
   Serial.print("roll: ");
   Serial.print(euler.roll);
   Serial.print("pitch: ");
@@ -22,6 +22,7 @@ void loop()
   Serial.print("yaw: ");
   Serial.print(euler.yaw);
   Serial.println();
+
   delay(500);
 };
 
