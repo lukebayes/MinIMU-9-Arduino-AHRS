@@ -37,6 +37,12 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
  */
 MinIMU9AHRS::MinIMU9AHRS()
 {
+  float _accelVector[3] = {0,0,0};
+  float _gyroVector[3] = {0,0,0};
+  float _omegaVector[3] = {0,0,0};
+  float _omegaP[3] = {0,0,0};
+  float _omegaI[3] = {0,0,0};
+  float _omega[3] = {0,0,0};
 };
 
 

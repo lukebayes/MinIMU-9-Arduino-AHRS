@@ -72,8 +72,46 @@ class MinIMU9AHRS {
     IMUValues getIMUValues(void);
 
   private:
+
+    /**
+     * Accelerometer instance.
+     */
     LSM303 _accelerometer;
+
+    /**
+     * Gyroscope instance.
+     */
     L3G _gyro;
+
+    /**
+     * Accelerometer values as a vector.
+     */
+    float _accelVector[3];
+
+    /**
+     * Gyroscope values as a vector.
+     */
+    float _gyroVector[3];
+
+    /**
+     * Corrected gyro vector data.
+     */
+    float _omegaVector[3];
+
+    /**
+     * Proportional correction.
+     */
+    float _omegaP[3];
+
+    /**
+     * Omega integration.
+     */
+    float _omegaI[3];
+
+    /**
+     * Omega result.
+     */
+    float _omega[3];
 };
 
 #endif
