@@ -186,7 +186,7 @@ class MinIMU9AHRS {
     /**
      * Minimum reading timeout in milliseconds.
      */
-    int _minTimeoutMillis;
+    int _minGyroAndAccelTimeoutMillis;
 
     /**
      * True if the readings have finished initialization.

@@ -58,7 +58,8 @@ void MinIMU9AHRS::init(void)
  */
 void MinIMU9AHRS::_initValues(void)
 {
-  _minTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
+  _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
+  _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 
   int _offsets[6] = {0, 0, 0, 0, 0, 0};
 
@@ -99,10 +100,13 @@ void MinIMU9AHRS::_initAccelerometer()
 };
 
 
+/**
+ * Initialize default offsets for each sensor.
+ */
 void MinIMU9AHRS::_initOffsets()
 {
-  _lastReadingTime = millis() - _minTimeoutMillis;
-
+  // NOTE(lbayes): This feature makes me sad because it increases system start
+  // time.
   for (int i = 0; i < 32; i++) {
     updateReadings();
     for (int y = 0; y < 6; y++) {
@@ -118,15 +122,6 @@ void MinIMU9AHRS::_initOffsets()
   _offsets[5] -= GRAVITY * _sensorDirection[5];
 
   _isInitialized = true;
-  
-  // Serial.println("Offset:");
-  // for (int y = 0; y < 6; y++) {
-    // Serial.println(_offsets[y]);
-  // }
-  
-  // delay(2000);
-  // delay(20);
-  // counter = 0;
 };
 
 /**
@@ -143,12 +138,20 @@ EulerAngle MinIMU9AHRS::getEuler(void)
  */
 void MinIMU9AHRS::updateReadings(void)
 {
+  // NOTE(lbayes): We have a problem with timing here. We want to collect 
+  // readings from the gyro and accelerometer at one maximum rate, and
+  // from the compass at a different (slower) maximum rate.
+
   _currentReadingTime = millis();
+
+  int millisecondsSinceLastReading = _currentReadingTime - _lastReadingTime;
+  
   // NOTE(lbayes): Do not reach down to the hardware too frequently.
-  if (_isInitialized && (_currentReadingTime - _lastReadingTime) >
-      _minTimeoutMillis) {
+  if (_isInitialized && millisecondsSinceLastReading > _minGyroAndAccelTimeoutMillis) {
     return;
   }
+
+  _secondsSinceLastReading = millisecondsSinceLastReading / 1000.0;
 
   _readGyro();
   _readAccelerometer();
