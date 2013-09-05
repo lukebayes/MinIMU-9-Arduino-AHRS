@@ -211,7 +211,8 @@ void loop() //Main Loop
     Read_Gyro();   // This read gyro data
     Read_Accel();     // Read I2C accelerometer
     
-    if (false && counter > 5)  // Read compass data at 10Hz... (5 loop runs)
+    // NOTE(lukebayes@gmail.com): Attempt to ignore compass.
+    if (counter > 5)  // Read compass data at 10Hz... (5 loop runs)
       {
       counter=0;
       Read_Compass();    // Read I2C magnetometer

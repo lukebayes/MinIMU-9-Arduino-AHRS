@@ -123,8 +123,8 @@ while 1:
         words = string.split(line,",")    # Fields split
         if len(words) > 2:
             try:
-                roll = float(words[0])*grad2rad
-                pitch = float(words[1])*grad2rad
+                roll = float(words[1])*grad2rad
+                pitch = float(words[0])*grad2rad
                 yaw = float(words[2])*grad2rad
             except:
                 print "Invalid line"
