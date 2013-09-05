@@ -45,7 +45,9 @@ typedef struct EulerAngle {
  * Raw values from the accelerometer, gyroscope and magnetometer.
  */
 typedef struct IMUValues {
-  float ax, ay, az, gx, gy, gz, mx, my, mz;
+  float gyro[3];
+  float accel[3];
+  float compass[3];
 };
 
 
