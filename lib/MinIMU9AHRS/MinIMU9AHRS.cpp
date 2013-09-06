@@ -57,14 +57,7 @@ void MinIMU9AHRS::init(void)
  */
 void MinIMU9AHRS::_initValues(void)
 {
-
   // TODO(lbayes): Figure out how to initialize this matrix.
-  // float _dcmMatrix[3][3] = {
-    // {1, 0, 0}, 
-    // {0, 1, 0},
-    // {0, 0, 1}
-  // }; 
-
   _dcmMatrix[0][0] = 1.0;
   _dcmMatrix[0][1] = 0.0;
   _dcmMatrix[0][2] = 0.0;
@@ -256,6 +249,9 @@ void MinIMU9AHRS::_readCompass(void)
 };
 
 
+/**
+ * Update the data matrices.
+ */
 void MinIMU9AHRS::_matrixUpdate(void)
 {
   _gyroVector[0] = Gyro_Scaled_X(_gyroValue.x); //gyro x roll
@@ -399,6 +395,10 @@ void MinIMU9AHRS::_normalize(void)
   _vectorScale(&_dcmMatrix[2][0], &temporary[2][0], renorm);
 };
 
+
+/**
+ * Correct matrices for drift.
+ */
 void MinIMU9AHRS::_driftCorrection(void)
 {
   float magHeadingX;
@@ -411,9 +411,6 @@ void MinIMU9AHRS::_driftCorrection(void)
   float accelMagnitude;
   float accelWeight;
   
-  
-  //*****Roll and Pitch***************
-
   // Calculate the magnitude of the accelerometer vector
   accelMagnitude = sqrt(_accelVector[0]*_accelVector[0] + _accelVector[1]*_accelVector[1] + _accelVector[2]*_accelVector[2]);
   accelMagnitude = accelMagnitude / GRAVITY; // Scale to gravity.
@@ -428,9 +425,7 @@ void MinIMU9AHRS::_driftCorrection(void)
   _vectorScale(&scaledOmegaI[0], &_errorRollPitch[0], Ki_ROLLPITCH * accelWeight);
   _vectorAdd(_omegaI, _omegaI, scaledOmegaI);     
   
-  //*****YAW***************
   // We make the gyro YAW drift correction based on compass magnetic heading
- 
   magHeadingX = cos(_magHeading);
   magHeadingY = sin(_magHeading);
   // Calculate YAW error.

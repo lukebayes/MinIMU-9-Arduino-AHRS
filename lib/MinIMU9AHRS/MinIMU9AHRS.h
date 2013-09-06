@@ -163,7 +163,7 @@ class MinIMU9AHRS {
     void _matrixMultiply(float a[3][3], float b[3][3], float mat[3][3]);
 
     /**
-     * Update the matrices.
+     * Update the data matrices.
      */
     void _matrixUpdate(void);
 
