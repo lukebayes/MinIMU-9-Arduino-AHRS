@@ -28,6 +28,6 @@ void loop()
   Serial.print(euler.yaw);
   Serial.println();
 
-  delay(300);
+  //delay(10);
 };
 
