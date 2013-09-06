@@ -194,6 +194,9 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _rawValues[4] = _accelerometer.a.y;
   _rawValues[5] = _accelerometer.a.z;
 
+  Serial.print("raw: ");
+  Serial.println(_rawValues[3]);
+
   _accelVector.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
   _accelVector.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
   _accelVector.z = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
