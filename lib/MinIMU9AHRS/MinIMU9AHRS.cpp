@@ -36,9 +36,7 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 /**
  * Library to wrap Pololu MinIMU9 v2 Inertial Measurement Unit (IMU).
  */
-MinIMU9AHRS::MinIMU9AHRS()
-{
-};
+MinIMU9AHRS::MinIMU9AHRS() {};
 
 
 /**
