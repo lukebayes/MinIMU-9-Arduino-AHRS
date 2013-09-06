@@ -147,6 +147,16 @@ class MinIMU9AHRS {
     void _readCompass(void);
 
     /**
+     * Update the compass heading after reading values.
+     */
+    void _updateCompassHeading(void);
+
+    /**
+     * Update the Euler angles.
+     */
+    void _updateEulerAngles(void);
+
+    /**
      * Multiply two 3x3 matrixs. This function developed by Jordi can be easily
      * adapted to multiple n*n matrix's. (Pero me da flojera!). 
      */
@@ -178,6 +188,16 @@ class MinIMU9AHRS {
     void _vectorAdd(float vectorOut[3], float vectorIn1[3], float vectorIn2[3]);
 
     /**
+     * Normalize the matrices.
+     */
+    void _normalize(void);
+
+    /**
+     * Correct matrices for drift.
+     */
+    void _driftCorrection(void);
+
+    /**
      * Accelerometer instance.
      */
     LSM303 _accelerometer;
@@ -205,7 +225,7 @@ class MinIMU9AHRS {
     /**
      * Compass values as a vector.
      */
-    vector _compassVector;
+    float _compassVector[3];
 
     /**
      * Gyroscope values as a vector.
@@ -298,6 +318,26 @@ class MinIMU9AHRS {
      * {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
      */
     float _updateMatrix[3][3];
+
+    /**
+     * Error roll pitch.
+     */
+    float _errorRollPitch[3];
+
+    /**
+     * Error yaw.
+     */
+    float _errorYaw[3];
+
+    /**
+     * Magnetometer heading.
+     */
+    float _magHeading;
+
+    /**
+     * The current Euler angle of the device (roll, pitch and yaw).
+     */
+    EulerAngle _euler;
 };
 
 #endif

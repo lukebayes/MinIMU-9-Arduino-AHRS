@@ -65,10 +65,18 @@ void MinIMU9AHRS::_initValues(void)
     // {0, 0, 1}
   // }; 
 
+  //float _errorRollPitch = {0, 0, 0};
+  //float _errorYaw = {0, 0, 0};
+
+  _euler.roll = 0;
+  _euler.pitch = 0;
+  _euler.yaw = 0;
+
   _integrationTime = 0.02;
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
   _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 
+  // TODO(lbayes): Fix this syntax here:
   _offsets[0] = 0; // gyro x offset
   _offsets[1] = 0; // gyro y offset
   _offsets[2] = 0; // gyro z offset
@@ -148,13 +156,7 @@ void MinIMU9AHRS::_initOffsets()
 EulerAngle MinIMU9AHRS::getEuler(void)
 {
   updateReadings();
-
-  EulerAngle euler = {};
-  euler.roll = _accelValue.x;
-  euler.pitch = _accelValue.y;
-  euler.yaw = _accelValue.z;
-
-  return euler;
+  return _euler;
 };
 
 
@@ -182,6 +184,9 @@ void MinIMU9AHRS::updateReadings(void)
   _readGyro();
   _readAccelerometer();
   _readCompass();
+  _matrixUpdate();
+  _normalize();
+  _driftCorrection();
 
   _lastReadingTime = _currentReadingTime;
 };
@@ -232,6 +237,8 @@ void MinIMU9AHRS::_readCompass(void)
   _compassValue.x = _sensorDirection[6] * _rawValues[6];
   _compassValue.y = _sensorDirection[7] * _rawValues[7];
   _compassValue.z = _sensorDirection[8] * _rawValues[8];
+
+  _updateCompassHeading();
 };
 
 
@@ -347,5 +354,124 @@ void MinIMU9AHRS::_vectorAdd(float vectorOut[3], float vectorIn1[3],
   for(int c = 0; c < 3; c++) {
      vectorOut[c] = vectorIn1[c] + vectorIn2[c];
   }
+};
+
+/**
+ * Normalize the matrices.
+ */
+void MinIMU9AHRS::_normalize(void)
+{
+  float error = 0;
+  float temporary[3][3];
+  float renorm = 0;
+  
+  error = -_vectorDotProduct(&_dcmMatrix[0][0], &_dcmMatrix[1][0]) * .5; //eq.19
+
+  _vectorScale(&temporary[0][0], &_dcmMatrix[1][0], error); //eq.19
+  _vectorScale(&temporary[1][0], &_dcmMatrix[0][0], error); //eq.19
+  
+  _vectorAdd(&temporary[0][0], &temporary[0][0], &_dcmMatrix[0][0]); //eq.19
+  _vectorAdd(&temporary[1][0], &temporary[1][0], &_dcmMatrix[1][0]); //eq.19
+  
+  _vectorCrossProduct(&temporary[2][0], &temporary[0][0], &temporary[1][0]); // c= a x b //eq.20
+  
+  renorm = .5 * (3 - _vectorDotProduct(&temporary[0][0], &temporary[0][0])); //eq.21
+  _vectorScale(&_dcmMatrix[0][0], &temporary[0][0], renorm);
+  
+  renorm = .5 * (3 - _vectorDotProduct(&temporary[1][0], &temporary[1][0])); //eq.21
+  _vectorScale(&_dcmMatrix[1][0], &temporary[1][0], renorm);
+  
+  renorm = .5 * (3 - _vectorDotProduct(&temporary[2][0], &temporary[2][0])); //eq.21
+  _vectorScale(&_dcmMatrix[2][0], &temporary[2][0], renorm);
+};
+
+void MinIMU9AHRS::_driftCorrection(void)
+{
+  float magHeadingX;
+  float magHeadingY;
+  float errorCourse;
+
+  // Compensation the Roll, Pitch and Yaw drift. 
+  static float scaledOmegaP[3];
+  static float scaledOmegaI[3];
+  float accelMagnitude;
+  float accelWeight;
+  
+  
+  //*****Roll and Pitch***************
+
+  // Calculate the magnitude of the accelerometer vector
+  accelMagnitude = sqrt(_accelVector[0]*_accelVector[0] + _accelVector[1]*_accelVector[1] + _accelVector[2]*_accelVector[2]);
+  accelMagnitude = accelMagnitude / GRAVITY; // Scale to gravity.
+  // Dynamic weighting of accelerometer info (reliability filter)
+  // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)
+  accelWeight = constrain(1 - 2*abs(1 - accelMagnitude), 0, 1);  //  
+
+  // Adjust the ground of reference.
+  _vectorCrossProduct(&_errorRollPitch[0], &_accelVector[0], &_dcmMatrix[2][0]);
+  _vectorScale(&_omegaP[0], &_errorRollPitch[0], Kp_ROLLPITCH * accelWeight);
+  
+  _vectorScale(&scaledOmegaI[0], &_errorRollPitch[0], Ki_ROLLPITCH * accelWeight);
+  _vectorAdd(_omegaI, _omegaI, scaledOmegaI);     
+  
+  //*****YAW***************
+  // We make the gyro YAW drift correction based on compass magnetic heading
+ 
+  magHeadingX = cos(_magHeading);
+  magHeadingY = sin(_magHeading);
+  // Calculate YAW error.
+  errorCourse=(_dcmMatrix[0][0]*magHeadingY) - (_dcmMatrix[1][0]*magHeadingX);
+  // Apply the yaw correction to the XYZ rotation of the aircraft, depeding the position.
+  _vectorScale(_errorYaw, &_dcmMatrix[2][0], errorCourse);
+  // .01 proportional of YAW.
+  _vectorScale(&scaledOmegaP[0], &_errorYaw[0], Kp_YAW);
+  // Add  Proportional.
+  _vectorAdd(_omegaP, _omegaP, scaledOmegaP);
+   // .00001 Integrator
+  _vectorScale(&scaledOmegaI[0], &_errorYaw[0], Ki_YAW);
+   // Add integrator to the _omegaI.
+  _vectorAdd(_omegaI, _omegaI, scaledOmegaI);
+};
+
+
+/**
+ * Read the compass heading.
+ */
+void MinIMU9AHRS::_updateCompassHeading()
+{
+  float magX;
+  float magY;
+  float cosRoll;
+  float sinRoll;
+  float cosPitch;
+  float sinPitch;
+  
+  cosRoll = cos(_euler.roll);
+  sinRoll = sin(_euler.roll);
+  cosPitch = cos(_euler.pitch);
+  sinPitch = sin(_euler.pitch);
+  
+  // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
+  _compassVector[0] = (float)(_compassValue.x - _sensorDirection[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - _sensorDirection[6]*0.5;
+  _compassVector[1] = (float)(_compassValue.y - _sensorDirection[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - _sensorDirection[7]*0.5;
+  _compassVector[2] = (float)(_compassValue.z - _sensorDirection[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - _sensorDirection[8]*0.5;
+  
+  // Tilt compensated Magnetic filed X:
+  magX = _compassVector[0] * cosPitch + _compassVector[1] * sinRoll * sinPitch + _compassVector[2] * cosRoll * sinPitch;
+  // Tilt compensated Magnetic filed Y:
+  magY = _compassVector[1] * cosRoll - _compassVector[2] * sinRoll;
+  // Magnetic Heading
+  _magHeading = atan2(-magY, magX);
+}
+
+
+/**
+ * Update the Euler angles.
+ */
+void MinIMU9AHRS::_updateEulerAngles(void)
+{
+  _euler.pitch = -asin(_dcmMatrix[2][0]);
+  _euler.roll = atan2(_dcmMatrix[2][1], _dcmMatrix[2][2]);
+  _euler.yaw = atan2(_dcmMatrix[1][0], _dcmMatrix[0][0]);
 };
 
