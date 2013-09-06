@@ -60,14 +60,24 @@ void MinIMU9AHRS::_initValues(void)
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
   _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 
-  int _offsets[6] = {0, 0, 0, 0, 0, 0};
+  _offsets[0] = 0; // gyro x offset
+  _offsets[1] = 0; // gyro y offset
+  _offsets[2] = 0; // gyro z offset
+  _offsets[3] = 0; // accel x offset
+  _offsets[4] = 0; // accel y offset
+  _offsets[5] = 0; // accell z offset
 
-  // NOTE(lbayes): Invert the sign of any of these values to flip that axis
-  // for the respective device. (gyro x, y, z, accel x, y, z, compass x, y, z).
-  int _sensorDirection[9] = {1, 1, 1, -1, -1, -1, 1, 1, 1};
-
-  // Example of some inverted values.
-  //int _sensorDirection[9] = {1, -1, -1, -1, 1, 1, 1, -1, -1};
+  // NOTE(lbayes): Invert the sign of any of these values to invert that axis
+  // for the respective device.
+  _sensorDirection[0] = 1; // gyro x
+  _sensorDirection[1] = 1; // gyro y
+  _sensorDirection[2] = 1; // gyro z
+  _sensorDirection[3] = -1; // accel x
+  _sensorDirection[4] = -1; // accel y
+  _sensorDirection[5] = -1; // accel z
+  _sensorDirection[6] = 1; // mag x
+  _sensorDirection[7] = 1; // mag y
+  _sensorDirection[8] = 1; // mag z
 };
   
 
@@ -193,9 +203,6 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _rawValues[3] = _accelerometer.a.x;
   _rawValues[4] = _accelerometer.a.y;
   _rawValues[5] = _accelerometer.a.z;
-
-  Serial.print("raw: ");
-  Serial.println(_rawValues[3]);
 
   _accelVector.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
   _accelVector.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
