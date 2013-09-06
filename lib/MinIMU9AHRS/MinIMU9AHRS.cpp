@@ -65,21 +65,27 @@ void MinIMU9AHRS::_initValues(void)
     // {0, 0, 1}
   // }; 
 
-  _dcmMatrix[0] = {1, 0, 0};
-  _dcmMatrix[1] = {0, 1, 0};
-  _dcmMatrix[2] = {0, 0, 1};
-  
-  _errorRollPitch[0] = 0;
-  _errorRollPitch[1] = 0;
-  _errorRollPitch[2] = 0;
+  _dcmMatrix[0][0] = 1.0;
+  _dcmMatrix[0][1] = 0.0;
+  _dcmMatrix[0][2] = 0.0;
+  _dcmMatrix[1][0] = 0.0;
+  _dcmMatrix[1][1] = 1.0;
+  _dcmMatrix[1][2] = 0.0;
+  _dcmMatrix[2][0] = 0.0;
+  _dcmMatrix[2][1] = 0.0;
+  _dcmMatrix[2][2] = 1.0;
 
-  _errorYaw[0] = 0;
-  _errorYaw[1] = 0;
-  _errorYaw[2] = 0;
+  _errorRollPitch[0] = 0.0;
+  _errorRollPitch[1] = 0.0;
+  _errorRollPitch[2] = 0.0;
 
-  _euler.roll = 0;
-  _euler.pitch = 0;
-  _euler.yaw = 0;
+  _errorYaw[0] = 0.0;
+  _errorYaw[1] = 0.0;
+  _errorYaw[2] = 0.0;
+
+  _euler.roll = 0.0;
+  _euler.pitch = 0.0;
+  _euler.yaw = 0.0;
 
   _integrationTime = 0.02;
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
@@ -164,7 +170,6 @@ void MinIMU9AHRS::_initOffsets()
  */
 EulerAngle MinIMU9AHRS::getEuler(void)
 {
-  updateReadings();
   return _euler;
 };
 
@@ -471,7 +476,7 @@ void MinIMU9AHRS::_updateCompassHeading()
   magY = _compassVector[1] * cosRoll - _compassVector[2] * sinRoll;
   // Magnetic Heading
   _magHeading = atan2(-magY, magX);
-}
+};
 
 
 /**

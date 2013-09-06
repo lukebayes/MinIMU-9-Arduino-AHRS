@@ -17,6 +17,7 @@ void setup()
 
 void loop()
 {
+  ahrs.updateReadings();
   EulerAngle euler = ahrs.getEuler();
 
   // Print the Euler values:
