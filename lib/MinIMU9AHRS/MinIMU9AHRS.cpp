@@ -57,6 +57,15 @@ void MinIMU9AHRS::init(void)
  */
 void MinIMU9AHRS::_initValues(void)
 {
+
+  // TODO(lbayes): Figure out how to initialize this matrix.
+  // float _dcmMatrix[3][3] = {
+    // {1, 0, 0}, 
+    // {0, 1, 0},
+    // {0, 0, 1}
+  // }; 
+
+  _integrationTime = 0.02;
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
   _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 
@@ -141,9 +150,9 @@ EulerAngle MinIMU9AHRS::getEuler(void)
   updateReadings();
 
   EulerAngle euler = {};
-  euler.roll = _accelVector.x;
-  euler.pitch = _accelVector.y;
-  euler.yaw = _accelVector.z;
+  euler.roll = _accelValue.x;
+  euler.pitch = _accelValue.y;
+  euler.yaw = _accelValue.z;
 
   return euler;
 };
@@ -188,9 +197,9 @@ void MinIMU9AHRS::_readGyro(void)
   _rawValues[1] = _gyroscope.g.y;
   _rawValues[2] = _gyroscope.g.z;
 
-  _gyroVector.x = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
-  _gyroVector.y = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
-  _gyroVector.z = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
+  _gyroValue.x = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
+  _gyroValue.y = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
+  _gyroValue.z = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
 };
 
 
@@ -204,9 +213,9 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _rawValues[4] = _accelerometer.a.y;
   _rawValues[5] = _accelerometer.a.z;
 
-  _accelVector.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
-  _accelVector.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
-  _accelVector.z = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
+  _accelValue.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
+  _accelValue.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
+  _accelValue.z = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
 };
 
 
@@ -220,8 +229,123 @@ void MinIMU9AHRS::_readCompass(void)
   _rawValues[7] = _accelerometer.m.y;
   _rawValues[8] = _accelerometer.m.z;
 
-  _compassVector.x = _sensorDirection[6] * _rawValues[6];
-  _compassVector.y = _sensorDirection[7] * _rawValues[7];
-  _compassVector.z = _sensorDirection[8] * _rawValues[8];
+  _compassValue.x = _sensorDirection[6] * _rawValues[6];
+  _compassValue.y = _sensorDirection[7] * _rawValues[7];
+  _compassValue.z = _sensorDirection[8] * _rawValues[8];
+};
+
+
+void MinIMU9AHRS::_matrixUpdate(void)
+{
+  _gyroVector[0] = Gyro_Scaled_X(_gyroValue.x); //gyro x roll
+  _gyroVector[1] = Gyro_Scaled_Y(_gyroValue.y); //gyro y pitch
+  _gyroVector[2] = Gyro_Scaled_Z(_gyroValue.z); //gyro Z yaw
+  
+  _accelVector[0] = _accelValue.x;
+  _accelVector[1] = _accelValue.y;
+  _accelVector[2] = _accelValue.z;
+    
+  _vectorAdd(&_omega[0], &_gyroVector[0], &_omegaI[0]);  //adding proportional term
+  _vectorAdd(&_omegaVector[0], &_omega[0], &_omegaP[0]); //adding Integrator term
+
+  //Accel_adjust();    //Remove centrifugal acceleration.   We are not using this function in this version - we have no speed measurement
+  
+ #if OUTPUTMODE == 1         
+  _updateMatrix[0][0] = 0;
+  _updateMatrix[0][1] = -_integrationTime * _omegaVector[2]; //-z
+  _updateMatrix[0][2] = _integrationTime * _omegaVector[1]; //y
+  _updateMatrix[1][0] = _integrationTime * _omegaVector[2]; //z
+  _updateMatrix[1][1] = 0;
+  _updateMatrix[1][2] = -_integrationTime * _omegaVector[0]; //-x
+  _updateMatrix[2][0] = -_integrationTime * _omegaVector[1]; //-y
+  _updateMatrix[2][1] = _integrationTime * _omegaVector[0]; //x
+  _updateMatrix[2][2] = 0;
+ #else // Uncorrected data (no drift correction)
+  _updateMatrix[0][0] = 0;
+  _updateMatrix[0][1] = -_integrationTime * _gyroVector[2]; //-z
+  _updateMatrix[0][2] = _integrationTime * _gyroVector[1]; //y
+  _updateMatrix[1][0] = _integrationTime * _gyroVector[2]; //z
+  _updateMatrix[1][1] = 0;
+  _updateMatrix[1][2] = -_integrationTime * _gyroVector[0];
+  _updateMatrix[2][0] = -_integrationTime * _gyroVector[1];
+  _updateMatrix[2][1] = _integrationTime * _gyroVector[0];
+  _updateMatrix[2][2] = 0;
+ #endif
+
+  _matrixMultiply(_dcmMatrix, _updateMatrix, _tempMatrix);
+
+  for (int x = 0; x < 3; x++) {
+    for (int y = 0; y < 3; y++) {
+      _dcmMatrix[x][y] += _tempMatrix[x][y];
+    } 
+  }
+};
+
+
+/**
+ * Multiply two 3x3 matrixs. This function developed by Jordi can be easily
+ * adapted to multiple n*n matrix's. (Pero me da flojera!). 
+ */
+void MinIMU9AHRS::_matrixMultiply(float a[3][3], float b[3][3],
+    float mat[3][3])
+{
+  float op[3]; 
+  for (int x = 0; x < 3; x++) {
+    for (int y = 0; y < 3; y++) {
+      for (int w = 0; w < 3; w++) {
+       op[w] = a[x][w] * b[w][y];
+      } 
+      mat[x][y] = 0;
+      mat[x][y] = op[0] + op[1] + op[2];
+      float test = mat[x][y];
+    }
+  }
+}
+
+
+/**
+ * Compute the dot product of two vectors and put the result into vectorOut.
+ */
+float MinIMU9AHRS::_vectorDotProduct(float vector1[3],float vector2[3])
+{
+  float op = 0;
+  for(int c = 0; c < 3; c++) {
+    op += vector1[c] * vector2[c];
+  }
+  return op; 
+};
+
+/**
+ * Compute the cross product of two vectors and put the result into vectorOut.
+ */
+void MinIMU9AHRS::_vectorCrossProduct(float vectorOut[3], float v1[3],
+    float v2[3])
+{
+  vectorOut[0] = (v1[1] * v2[2]) - (v1[2] * v2[1]);
+  vectorOut[1] = (v1[2] * v2[0]) - (v1[0] * v2[2]);
+  vectorOut[2] = (v1[0] * v2[1]) - (v1[1] * v2[0]);
+};
+
+
+/**
+ * Multiply the provided vector by a scalar and put result into vectorOut.
+ */
+void MinIMU9AHRS::_vectorScale(float vectorOut[3], float vectorIn[3],
+    float scale2)
+{
+  for(int c = 0; c < 3; c++) {
+    vectorOut[c] = vectorIn[c] * scale2; 
+  }
+};
+
+/**
+ * Add the povided vectors and put result into vectorOut.
+ */
+void MinIMU9AHRS::_vectorAdd(float vectorOut[3], float vectorIn1[3],
+    float vectorIn2[3])
+{
+  for(int c = 0; c < 3; c++) {
+     vectorOut[c] = vectorIn1[c] + vectorIn2[c];
+  }
 };
 
