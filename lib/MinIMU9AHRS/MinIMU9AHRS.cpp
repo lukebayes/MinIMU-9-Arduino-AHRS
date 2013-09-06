@@ -65,8 +65,17 @@ void MinIMU9AHRS::_initValues(void)
     // {0, 0, 1}
   // }; 
 
-  //float _errorRollPitch = {0, 0, 0};
-  //float _errorYaw = {0, 0, 0};
+  _dcmMatrix[0] = {1, 0, 0};
+  _dcmMatrix[1] = {0, 1, 0};
+  _dcmMatrix[2] = {0, 0, 1};
+  
+  _errorRollPitch[0] = 0;
+  _errorRollPitch[1] = 0;
+  _errorRollPitch[2] = 0;
+
+  _errorYaw[0] = 0;
+  _errorYaw[1] = 0;
+  _errorYaw[2] = 0;
 
   _euler.roll = 0;
   _euler.pitch = 0;
