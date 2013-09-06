@@ -44,6 +44,7 @@ MinIMU9AHRS::MinIMU9AHRS() {};
  */
 void MinIMU9AHRS::init(void)
 {
+  Serial.println("init minimu");
   _initValues();
   _initGyro();
   _initAccelerometer();
@@ -128,6 +129,13 @@ void MinIMU9AHRS::_initOffsets()
 EulerAngle MinIMU9AHRS::getEuler(void)
 {
   updateReadings();
+
+  EulerAngle euler = {};
+  euler.roll = _accelVector.x;
+  euler.pitch = _accelVector.y;
+  euler.yaw = _accelVector.z;
+
+  return euler;
 };
 
 
@@ -142,10 +150,11 @@ void MinIMU9AHRS::updateReadings(void)
 
   _currentReadingTime = millis();
 
-  int millisecondsSinceLastReading = _currentReadingTime - _lastReadingTime;
-  
+  unsigned long millisecondsSinceLastReading = _currentReadingTime - _lastReadingTime;
+
   // NOTE(lbayes): Do not reach down to the hardware too frequently.
-  if (_isInitialized && millisecondsSinceLastReading > _minGyroAndAccelTimeoutMillis) {
+  if (_isInitialized && millisecondsSinceLastReading < _minGyroAndAccelTimeoutMillis) {
+    Serial.println("bailing");
     return;
   }
 

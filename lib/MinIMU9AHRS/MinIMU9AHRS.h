@@ -176,12 +176,17 @@ class MinIMU9AHRS {
     /**
      * Time of last reading in milliseconds.
      */
-    int _lastReadingTime;
+    unsigned long _lastReadingTime;
 
     /**
      * Time of current reading in milliseconds.
      */
-    int _currentReadingTime;
+    unsigned long _currentReadingTime;
+
+    /**
+     * Seconds since last reading.
+     */
+    unsigned long _secondsSinceLastReading;
 
     /**
      * Minimum reading timeout in milliseconds.
@@ -192,11 +197,6 @@ class MinIMU9AHRS {
      * True if the readings have finished initialization.
      */
     bool _isInitialized;
-
-    /**
-     * Seconds since last reading.
-     */
-    float _secondsSinceLastReading;
 };
 
 #endif
