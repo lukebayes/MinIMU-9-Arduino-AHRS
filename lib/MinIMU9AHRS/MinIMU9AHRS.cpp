@@ -44,11 +44,11 @@ MinIMU9AHRS::MinIMU9AHRS() {};
  */
 void MinIMU9AHRS::init(void)
 {
-  Serial.println("init minimu");
   _initValues();
   _initGyro();
   _initAccelerometer();
   _initOffsets();
+  Serial.println("init minimu");
 };
 
 
@@ -85,6 +85,18 @@ void MinIMU9AHRS::_initValues(void)
   _errorYaw[0] = 0.0;
   _errorYaw[1] = 0.0;
   _errorYaw[2] = 0.0;
+
+  _omegaP[0] = 0.0;
+  _omegaP[1] = 0.0;
+  _omegaP[2] = 0.0;
+
+  _omegaI[0] = 0.0;
+  _omegaI[1] = 0.0;
+  _omegaI[2] = 0.0;
+
+  _omega[0] = 0.0;
+  _omega[1] = 0.0;
+  _omega[2] = 0.0;
 
   _euler.roll = 0.0;
   _euler.pitch = 0.0;
@@ -305,11 +317,11 @@ void MinIMU9AHRS::_matrixUpdate(void)
   _matrixMultiply(_dcmMatrix, _updateMatrix, _tempMatrix);
 
   Serial.print("x: ");
-  Serial.print(_dcmMatrix[2][0]);
+  Serial.print(_dcmMatrix[1][0]);
   Serial.print(" y: ");
-  Serial.print(_dcmMatrix[2][1]);
+  Serial.print(_dcmMatrix[1][1]);
   Serial.print(" z: ");
-  Serial.print(_dcmMatrix[2][2]);
+  Serial.print(_dcmMatrix[1][2]);
   Serial.println();
 
   for (int x = 0; x < 3; x++) {
@@ -335,7 +347,7 @@ void MinIMU9AHRS::_matrixMultiply(float a[3][3], float b[3][3],
       } 
       mat[x][y] = 0;
       mat[x][y] = op[0] + op[1] + op[2];
-      float test = mat[x][y];
+      //float test = mat[x][y];
     }
   }
 }
