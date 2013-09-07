@@ -68,6 +68,16 @@ void MinIMU9AHRS::_initValues(void)
   _dcmMatrix[2][1] = 0.0;
   _dcmMatrix[2][2] = 1.0;
 
+  _tempMatrix[0][0] = 0.0;
+  _tempMatrix[0][1] = 0.0;
+  _tempMatrix[0][2] = 0.0;
+  _tempMatrix[1][0] = 0.0;
+  _tempMatrix[1][1] = 0.0;
+  _tempMatrix[1][2] = 0.0;
+  _tempMatrix[2][0] = 0.0;
+  _tempMatrix[2][1] = 0.0;
+  _tempMatrix[2][2] = 0.0;
+
   _errorRollPitch[0] = 0.0;
   _errorRollPitch[1] = 0.0;
   _errorRollPitch[2] = 0.0;
@@ -192,8 +202,8 @@ void MinIMU9AHRS::updateReadings(void)
   _readAccelerometer();
   _readCompass();
   _matrixUpdate();
-  _normalize();
-  _driftCorrection();
+  //_normalize();
+  //_driftCorrection();
   _updateEulerAngles();
 
   _lastReadingTime = _currentReadingTime;
@@ -258,7 +268,7 @@ void MinIMU9AHRS::_matrixUpdate(void)
   _gyroVector[0] = Gyro_Scaled_X(_gyroValue.x); //gyro x roll
   _gyroVector[1] = Gyro_Scaled_Y(_gyroValue.y); //gyro y pitch
   _gyroVector[2] = Gyro_Scaled_Z(_gyroValue.z); //gyro Z yaw
-  
+
   _accelVector[0] = _accelValue.x;
   _accelVector[1] = _accelValue.y;
   _accelVector[2] = _accelValue.z;
@@ -293,6 +303,14 @@ void MinIMU9AHRS::_matrixUpdate(void)
  #endif
 
   _matrixMultiply(_dcmMatrix, _updateMatrix, _tempMatrix);
+
+  Serial.print("x: ");
+  Serial.print(_dcmMatrix[2][0]);
+  Serial.print(" y: ");
+  Serial.print(_dcmMatrix[2][1]);
+  Serial.print(" z: ");
+  Serial.print(_dcmMatrix[2][2]);
+  Serial.println();
 
   for (int x = 0; x < 3; x++) {
     for (int y = 0; y < 3; y++) {

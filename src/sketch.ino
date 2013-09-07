@@ -8,7 +8,6 @@ MinIMU9AHRS ahrs;
 void setup()
 {
   Serial.begin(115200);
-  delay(1000);
   Wire.begin();
   // Set up the AHRS with the I2C pins.
   ahrs.init();
@@ -20,14 +19,16 @@ void loop()
   ahrs.updateReadings();
   EulerAngle euler = ahrs.getEuler();
 
-  // Print the Euler values:
-  Serial.print("roll: ");
-  Serial.print(euler.roll);
-  Serial.print(" pitch: ");
-  Serial.print(euler.pitch);
-  Serial.print(" yaw: ");
-  Serial.print(euler.yaw);
+  /*
+  Serial.print("!");
+  Serial.print("ANG:");
+  Serial.print(ToDeg(euler.roll));
+  Serial.print(",");
+  Serial.print(ToDeg(euler.pitch));
+  Serial.print(",");
+  Serial.print(ToDeg(euler.yaw));
   Serial.println();
+  */
 
   delay(100);
 };
