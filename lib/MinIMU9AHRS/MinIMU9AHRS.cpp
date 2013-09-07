@@ -194,6 +194,7 @@ void MinIMU9AHRS::updateReadings(void)
   _matrixUpdate();
   _normalize();
   _driftCorrection();
+  _updateEulerAngles();
 
   _lastReadingTime = _currentReadingTime;
 };
@@ -264,8 +265,10 @@ void MinIMU9AHRS::_matrixUpdate(void)
     
   _vectorAdd(&_omega[0], &_gyroVector[0], &_omegaI[0]);  //adding proportional term
   _vectorAdd(&_omegaVector[0], &_omega[0], &_omegaP[0]); //adding Integrator term
-
-  //Accel_adjust();    //Remove centrifugal acceleration.   We are not using this function in this version - we have no speed measurement
+ 
+  // Remove centrifugal acceleration.
+  // We are not using this function in this version - we have no speed measurement
+  //Accel_adjust();
   
  #if OUTPUTMODE == 1         
   _updateMatrix[0][0] = 0;
