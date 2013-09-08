@@ -45,7 +45,7 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_READING_TIMEOUT_MILLIS 20
 
 // Minimum timeout in milliseconds that must elapse between compass readings.
-// 5Hz (200ms)
+// 10Hz (100ms)
 #define DEFAULT_COMPASS_TIMEOUT_MILLIS 100
 
 // Convert provided value to radians

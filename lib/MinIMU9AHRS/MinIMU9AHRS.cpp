@@ -157,8 +157,6 @@ void MinIMU9AHRS::_initOffsets()
     
   // NOTE(lbayes): Special handling for the accelerometer z axis.
   _offsets[5] -= GRAVITY * _sensorDirection[5];
-
-  delay(2000);
 };
 
 
