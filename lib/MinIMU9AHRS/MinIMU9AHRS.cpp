@@ -367,6 +367,8 @@ void MinIMU9AHRS::_matrixMultiply(float a[3][3], float b[3][3],
       } 
       mat[x][y] = 0;
       mat[x][y] = op[0] + op[1] + op[2];
+      // NOTE(lbayes): The following line was in the original code, but
+      // doesn't appear to be used/available anywhere else.
       //float test = mat[x][y];
     }
   }
