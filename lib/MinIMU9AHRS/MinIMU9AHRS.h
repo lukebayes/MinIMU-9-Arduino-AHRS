@@ -230,6 +230,13 @@ class MinIMU9AHRS {
     float _compassVector[3];
 
     /**
+     * Time in milliseconds since the last compass reading.
+     *
+     * The compass shouldn't be read more that 5Hz.
+     */
+    unsigned long _lastCompassReadingTime;
+
+    /**
      * Gyroscope values as a vector.
      */
     vector _gyroValue;
@@ -281,11 +288,6 @@ class MinIMU9AHRS {
      * Time of current reading in milliseconds.
      */
     unsigned long _currentReadingTime;
-
-    /**
-     * Seconds since last reading.
-     */
-    unsigned long _secondsSinceLastReading;
 
     /**
      * Minimum reading timeout in milliseconds.

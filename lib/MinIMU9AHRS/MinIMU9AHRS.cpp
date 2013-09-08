@@ -103,6 +103,8 @@ void MinIMU9AHRS::_initValues(void)
   _euler.yaw = 0;
 
   _integrationTime = 0.02;
+  _lastCompassReadingTime = 0;
+
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
   _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 
@@ -200,19 +202,20 @@ void MinIMU9AHRS::updateReadings(void)
 
   _currentReadingTime = millis();
 
-  unsigned long millisecondsSinceLastReading = _currentReadingTime - _lastReadingTime;
-
   // NOTE(lbayes): Do not reach down to the hardware too frequently.
-  if (_isInitialized && millisecondsSinceLastReading < _minGyroAndAccelTimeoutMillis) {
-    Serial.println("bailing");
+  if (_isInitialized && _currentReadingTime - _lastReadingTime < _minGyroAndAccelTimeoutMillis) {
     return;
   }
 
-  _secondsSinceLastReading = millisecondsSinceLastReading / 1000.0;
-
   _readGyro();
   _readAccelerometer();
-  //_readCompass();
+  
+  // Don't read the compass faster than 5Hz
+  if (_isInitialized && _currentReadingTime - _lastCompassReadingTime > 200) {
+    //_readCompass();
+    _lastCompassReadingTime = _currentReadingTime;
+  }
+  
   _matrixUpdate();
   _normalize();
   _driftCorrection();
@@ -273,10 +276,6 @@ void MinIMU9AHRS::_readCompass(void)
   _rawValues[6] = _accelerometer.m.x;
   _rawValues[7] = _accelerometer.m.y;
   _rawValues[8] = _accelerometer.m.z;
-
-  _compassValue.x = _sensorDirection[6] * _rawValues[6];
-  _compassValue.y = _sensorDirection[7] * _rawValues[7];
-  _compassValue.z = _sensorDirection[8] * _rawValues[8];
 
   _updateCompassHeading();
 };
@@ -499,15 +498,10 @@ void MinIMU9AHRS::_updateCompassHeading()
 {
   float magX;
   float magY;
-  float cosRoll;
-  float sinRoll;
-  float cosPitch;
-  float sinPitch;
-  
-  cosRoll = cos(_euler.roll);
-  sinRoll = sin(_euler.roll);
-  cosPitch = cos(_euler.pitch);
-  sinPitch = sin(_euler.pitch);
+  float cosRoll = cos(_euler.roll);
+  float sinRoll = sin(_euler.roll);
+  float cosPitch = cos(_euler.pitch);
+  float sinPitch = sin(_euler.pitch);
   
   // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
   _compassVector[0] = (float)(_compassValue.x - _sensorDirection[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - _sensorDirection[6]*0.5;
