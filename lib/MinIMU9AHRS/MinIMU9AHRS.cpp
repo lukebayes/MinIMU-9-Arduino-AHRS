@@ -98,17 +98,7 @@ void MinIMU9AHRS::_initValues(void)
   _omega[1] = 0;
   _omega[2] = 0;
 
-  _euler.roll = 0;
-  _euler.pitch = 0;
-  _euler.yaw = 0;
-
-  _integrationTime = 0.02;
-  _lastCompassReadingTime = 0;
-
-  _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
-  _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
-
-  // TODO(lbayes): Fix this syntax here:
+  // TODO(lbayes): Fix this syntax here, should be _offets = {0, 0, ...etc};
   _offsets[0] = 0; // gyro x offset
   _offsets[1] = 0; // gyro y offset
   _offsets[2] = 0; // gyro z offset
@@ -127,6 +117,17 @@ void MinIMU9AHRS::_initValues(void)
   _sensorDirection[6] = 1; // mag x
   _sensorDirection[7] = 1; // mag y
   _sensorDirection[8] = 1; // mag z
+
+  _euler.roll = 0;
+  _euler.pitch = 0;
+  _euler.yaw = 0;
+
+  // TODO(lbayes): Shouldn't this be based on the gyro and accel timeout millis?
+  _integrationTime = 0.02;
+  _lastCompassReadingTime = 0;
+
+  _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
+  _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 };
   
 
@@ -138,7 +139,11 @@ void MinIMU9AHRS::_initGyro()
   // TODO(lbayes): Expose configurable device addresses to external init
   // method.
   _gyroscope.init(L3GD20_DEVICE, L3GD20_ADDRESS_SA0_HIGH);
-  _gyroscope.enableDefault();
+  
+  // Normal power mode, all axes enabled, 100 Hz
+  _gyroscope.writeReg(L3G_CTRL_REG1, 0x0F);
+  // 2000 dps full scale
+  _gyroscope.writeReg(L3G_CTRL_REG4, 0x20);
 };
 
 
@@ -148,10 +153,10 @@ void MinIMU9AHRS::_initGyro()
 void MinIMU9AHRS::_initAccelerometer()
 {
   _accelerometer.init(LSM303DLHC_DEVICE, ACC_ADDRESS_SA0_A_HIGH);
-  _accelerometer.enableDefault();
+  //_accelerometer.enableDefault();
 
-  //_accelerometer.writeAccReg(LSM303_CTRL_REG1_A, 0x47); // normal power mode, all axes enabled, 50 Hz
-  //_accelerometer.writeAccReg(LSM303_CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10 on DLHC; high resolution output mode
+  _accelerometer.writeAccReg(LSM303_CTRL_REG1_A, 0x47); // normal power mode, all axes enabled, 50 Hz
+  _accelerometer.writeAccReg(LSM303_CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10 on DLHC; high resolution output mode
 
   // NOTE(lbayes): Continuous conversion mode
   _accelerometer.writeMagReg(LSM303_MR_REG_M, 0x00);
