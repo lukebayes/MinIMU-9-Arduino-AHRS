@@ -202,7 +202,7 @@ void MinIMU9AHRS::updateReadings(void)
 
   _currentReadingTime = millis();
 
-  // NOTE(lbayes): Do not reach down to the hardware too frequently.
+  // NOTE(lbayes): Don't read the gyro/accel faster than 100Hz
   if (_isInitialized && _currentReadingTime - _lastReadingTime < _minGyroAndAccelTimeoutMillis) {
     return;
   }
