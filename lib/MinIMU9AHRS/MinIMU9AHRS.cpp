@@ -58,49 +58,49 @@ void MinIMU9AHRS::init(void)
 void MinIMU9AHRS::_initValues(void)
 {
   // TODO(lbayes): Figure out how to initialize this matrix.
-  _dcmMatrix[0][0] = 1.0;
-  _dcmMatrix[0][1] = 0.0;
-  _dcmMatrix[0][2] = 0.0;
-  _dcmMatrix[1][0] = 0.0;
-  _dcmMatrix[1][1] = 1.0;
-  _dcmMatrix[1][2] = 0.0;
-  _dcmMatrix[2][0] = 0.0;
-  _dcmMatrix[2][1] = 0.0;
-  _dcmMatrix[2][2] = 1.0;
+  _dcmMatrix[0][0] = 1;
+  _dcmMatrix[0][1] = 0;
+  _dcmMatrix[0][2] = 0;
+  _dcmMatrix[1][0] = 0;
+  _dcmMatrix[1][1] = 1;
+  _dcmMatrix[1][2] = 0;
+  _dcmMatrix[2][0] = 0;
+  _dcmMatrix[2][1] = 0;
+  _dcmMatrix[2][2] = 1;
 
-  _tempMatrix[0][0] = 0.0;
-  _tempMatrix[0][1] = 0.0;
-  _tempMatrix[0][2] = 0.0;
-  _tempMatrix[1][0] = 0.0;
-  _tempMatrix[1][1] = 0.0;
-  _tempMatrix[1][2] = 0.0;
-  _tempMatrix[2][0] = 0.0;
-  _tempMatrix[2][1] = 0.0;
-  _tempMatrix[2][2] = 0.0;
+  _tempMatrix[0][0] = 0;
+  _tempMatrix[0][1] = 0;
+  _tempMatrix[0][2] = 0;
+  _tempMatrix[1][0] = 0;
+  _tempMatrix[1][1] = 0;
+  _tempMatrix[1][2] = 0;
+  _tempMatrix[2][0] = 0;
+  _tempMatrix[2][1] = 0;
+  _tempMatrix[2][2] = 0;
 
-  _errorRollPitch[0] = 0.0;
-  _errorRollPitch[1] = 0.0;
-  _errorRollPitch[2] = 0.0;
+  _errorRollPitch[0] = 0;
+  _errorRollPitch[1] = 0;
+  _errorRollPitch[2] = 0;
 
-  _errorYaw[0] = 0.0;
-  _errorYaw[1] = 0.0;
-  _errorYaw[2] = 0.0;
+  _errorYaw[0] = 0;
+  _errorYaw[1] = 0;
+  _errorYaw[2] = 0;
 
-  _omegaP[0] = 0.0;
-  _omegaP[1] = 0.0;
-  _omegaP[2] = 0.0;
+  _omegaP[0] = 0;
+  _omegaP[1] = 0;
+  _omegaP[2] = 0;
 
-  _omegaI[0] = 0.0;
-  _omegaI[1] = 0.0;
-  _omegaI[2] = 0.0;
+  _omegaI[0] = 0;
+  _omegaI[1] = 0;
+  _omegaI[2] = 0;
 
-  _omega[0] = 0.0;
-  _omega[1] = 0.0;
-  _omega[2] = 0.0;
+  _omega[0] = 0;
+  _omega[1] = 0;
+  _omega[2] = 0;
 
-  _euler.roll = 0.0;
-  _euler.pitch = 0.0;
-  _euler.yaw = 0.0;
+  _euler.roll = 0;
+  _euler.pitch = 0;
+  _euler.yaw = 0;
 
   _integrationTime = 0.02;
   _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
@@ -212,10 +212,10 @@ void MinIMU9AHRS::updateReadings(void)
 
   _readGyro();
   _readAccelerometer();
-  _readCompass();
+  //_readCompass();
   _matrixUpdate();
-  //_normalize();
-  //_driftCorrection();
+  _normalize();
+  _driftCorrection();
   _updateEulerAngles();
 
   _lastReadingTime = _currentReadingTime;
@@ -228,6 +228,7 @@ void MinIMU9AHRS::updateReadings(void)
 void MinIMU9AHRS::_readGyro(void)
 {
   _gyroscope.read();
+
   _rawValues[0] = _gyroscope.g.x;
   _rawValues[1] = _gyroscope.g.y;
   _rawValues[2] = _gyroscope.g.z;
@@ -235,6 +236,15 @@ void MinIMU9AHRS::_readGyro(void)
   _gyroValue.x = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
   _gyroValue.y = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
   _gyroValue.z = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
+
+  /*
+  Serial.print("GYRO x: ");
+  Serial.print(_gyroValue.x);
+  Serial.print(" y: ");
+  Serial.print(_gyroValue.y);
+  Serial.print(" z: ");
+  Serial.println(_gyroValue.z);
+  */
 };
 
 
@@ -288,17 +298,19 @@ void MinIMU9AHRS::_matrixUpdate(void)
   _vectorAdd(&_omega[0], &_gyroVector[0], &_omegaI[0]);  //adding proportional term
   _vectorAdd(&_omegaVector[0], &_omega[0], &_omegaP[0]); //adding Integrator term
  
+  // We are not using this function in this version - we have no speed measurement.
   // Remove centrifugal acceleration.
-  // We are not using this function in this version - we have no speed measurement
-  //Accel_adjust();
+  //_accellAdjust();
   
  #if OUTPUTMODE == 1         
   _updateMatrix[0][0] = 0;
   _updateMatrix[0][1] = -_integrationTime * _omegaVector[2]; //-z
   _updateMatrix[0][2] = _integrationTime * _omegaVector[1]; //y
+
   _updateMatrix[1][0] = _integrationTime * _omegaVector[2]; //z
   _updateMatrix[1][1] = 0;
   _updateMatrix[1][2] = -_integrationTime * _omegaVector[0]; //-x
+
   _updateMatrix[2][0] = -_integrationTime * _omegaVector[1]; //-y
   _updateMatrix[2][1] = _integrationTime * _omegaVector[0]; //x
   _updateMatrix[2][2] = 0;
@@ -306,9 +318,11 @@ void MinIMU9AHRS::_matrixUpdate(void)
   _updateMatrix[0][0] = 0;
   _updateMatrix[0][1] = -_integrationTime * _gyroVector[2]; //-z
   _updateMatrix[0][2] = _integrationTime * _gyroVector[1]; //y
+
   _updateMatrix[1][0] = _integrationTime * _gyroVector[2]; //z
   _updateMatrix[1][1] = 0;
   _updateMatrix[1][2] = -_integrationTime * _gyroVector[0];
+
   _updateMatrix[2][0] = -_integrationTime * _gyroVector[1];
   _updateMatrix[2][1] = _integrationTime * _gyroVector[0];
   _updateMatrix[2][2] = 0;
@@ -316,19 +330,21 @@ void MinIMU9AHRS::_matrixUpdate(void)
 
   _matrixMultiply(_dcmMatrix, _updateMatrix, _tempMatrix);
 
-  Serial.print("x: ");
-  Serial.print(_dcmMatrix[1][0]);
-  Serial.print(" y: ");
-  Serial.print(_dcmMatrix[1][1]);
-  Serial.print(" z: ");
-  Serial.print(_dcmMatrix[1][2]);
-  Serial.println();
-
   for (int x = 0; x < 3; x++) {
     for (int y = 0; y < 3; y++) {
       _dcmMatrix[x][y] += _tempMatrix[x][y];
     } 
   }
+
+  /*
+  Serial.print("x: ");
+  Serial.print(_dcmMatrix[0][0]);
+  Serial.print(" y: ");
+  Serial.print(_dcmMatrix[0][1]);
+  Serial.print(" z: ");
+  Serial.print(_dcmMatrix[0][2]);
+  Serial.println();
+  */
 };
 
 
@@ -517,3 +533,11 @@ void MinIMU9AHRS::_updateEulerAngles(void)
   _euler.yaw = atan2(_dcmMatrix[1][0], _dcmMatrix[0][0]);
 };
 
+/*
+// TODO(lbayes): Implment and use when motors or other speed inputs are present.
+void MinIMU9AHRS::_accelAdjust(void)
+{
+ Accel_Vector[1] += Accel_Scale(speed_3d*Omega[2]);  // Centrifugal force on Acc_y = GPS_speed*GyroZ
+ Accel_Vector[2] -= Accel_Scale(speed_3d*Omega[1]);  // Centrifugal force on Acc_z = GPS_speed*GyroY 
+};
+*/

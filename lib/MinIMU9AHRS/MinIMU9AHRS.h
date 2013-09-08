@@ -74,6 +74,8 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #define Kp_YAW 1.2
 #define Ki_YAW 0.00002
 
+#define OUTPUTMODE 1
+
 /**
  * Interpreted Euler angle from the raw values.
  */

@@ -19,7 +19,6 @@ void loop()
   ahrs.updateReadings();
   EulerAngle euler = ahrs.getEuler();
 
-  /*
   Serial.print("!");
   Serial.print("ANG:");
   Serial.print(ToDeg(euler.roll));
@@ -28,7 +27,6 @@ void loop()
   Serial.print(",");
   Serial.print(ToDeg(euler.yaw));
   Serial.println();
-  */
 
   delay(100);
 };
