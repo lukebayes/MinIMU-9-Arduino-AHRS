@@ -41,7 +41,12 @@ with MinIMU-9-Arduino-AHRS. If not, see <http://www.gnu.org/licenses/>.
 #define GRAVITY 256
 
 // Minimum timeout in milliseconds that must elapse between readings.
-#define DEFAULT_MIN_TIMEOUT_MILLIS 10
+// 50Hz (20ms)
+#define DEFAULT_READING_TIMEOUT_MILLIS 20
+
+// Minimum timeout in milliseconds that must elapse between compass readings.
+// 5Hz (200ms)
+#define DEFAULT_COMPASS_TIMEOUT_MILLIS 200
 
 // Convert provided value to radians
 #define ToRad(x) ((x)*0.01745329252)  // *pi/180
@@ -86,11 +91,6 @@ typedef struct EulerAngle {
 
 class MinIMU9AHRS {
   public:
-    typedef struct vector
-    {
-      float x, y, z;
-    };
-
     /**
      * The Attitude, Heading Reference System.
      */
@@ -127,6 +127,11 @@ class MinIMU9AHRS {
      * Initialize accelerometer.
      */
     void _initAccelerometer(void);
+
+    /**
+     * Initialize compass.
+     */
+    void _initCompass(void);
 
     /**
      * Initialize readings.
@@ -212,7 +217,7 @@ class MinIMU9AHRS {
     /**
      * Accelerometer values as a vector.
      */
-    vector _accelValue;
+    float _accelValue[3];
 
     /**
      * Accelerometer values as a vector.
@@ -222,7 +227,7 @@ class MinIMU9AHRS {
     /**
      * Compass values as a vector.
      */
-    vector _compassValue;
+    float _compassValue[3];
 
     /**
      * Compass values as a vector.
@@ -239,7 +244,7 @@ class MinIMU9AHRS {
     /**
      * Gyroscope values as a vector.
      */
-    vector _gyroValue;
+    float _gyroValue[3];
 
     /**
      * Gyroscope values as a vector.
@@ -290,20 +295,10 @@ class MinIMU9AHRS {
     unsigned long _currentReadingTime;
 
     /**
-     * Minimum reading timeout in milliseconds.
-     */
-    int _minGyroAndAccelTimeoutMillis;
-
-    /**
-     * True if the readings have finished initialization.
-     */
-    bool _isInitialized;
-
-    /**
      * Integration time in seconds for the DCM algorithm. We will run the
-     * integration loop at 50Hz if possible.
+     * integration loop at 100Hz if possible.
      */
-    float _integrationTime;
+    float _secondsSinceLastReading;
 
     /**
      * Matrix for DCM values.

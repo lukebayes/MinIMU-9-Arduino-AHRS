@@ -47,8 +47,8 @@ void MinIMU9AHRS::init(void)
   _initValues();
   _initGyro();
   _initAccelerometer();
+  _initCompass();
   _initOffsets();
-  Serial.println("init minimu");
 };
 
 
@@ -67,6 +67,16 @@ void MinIMU9AHRS::_initValues(void)
   _dcmMatrix[2][0] = 0;
   _dcmMatrix[2][1] = 0;
   _dcmMatrix[2][2] = 1;
+
+  _updateMatrix[0][0] = 0;
+  _updateMatrix[0][1] = 1;
+  _updateMatrix[0][2] = 2;
+  _updateMatrix[1][0] = 3;
+  _updateMatrix[1][1] = 4;
+  _updateMatrix[1][2] = 5;
+  _updateMatrix[2][0] = 6;
+  _updateMatrix[2][1] = 7;
+  _updateMatrix[2][2] = 8;
 
   _tempMatrix[0][0] = 0;
   _tempMatrix[0][1] = 0;
@@ -106,6 +116,10 @@ void MinIMU9AHRS::_initValues(void)
   _offsets[4] = 0; // accel y offset
   _offsets[5] = 0; // accell z offset
 
+  _euler.roll = 0;
+  _euler.pitch = 0;
+  _euler.yaw = 0;
+
   // NOTE(lbayes): Invert the sign of any of these values to invert that axis
   // for the respective device.
   _sensorDirection[0] = 1; // gyro x
@@ -118,16 +132,8 @@ void MinIMU9AHRS::_initValues(void)
   _sensorDirection[7] = 1; // mag y
   _sensorDirection[8] = 1; // mag z
 
-  _euler.roll = 0;
-  _euler.pitch = 0;
-  _euler.yaw = 0;
-
-  // TODO(lbayes): Shouldn't this be based on the gyro and accel timeout millis?
-  _integrationTime = 0.02;
+  _lastReadingTime = 0;
   _lastCompassReadingTime = 0;
-
-  _minGyroAndAccelTimeoutMillis = DEFAULT_MIN_TIMEOUT_MILLIS;
-  _lastReadingTime = -_minGyroAndAccelTimeoutMillis;
 };
   
 
@@ -153,39 +159,56 @@ void MinIMU9AHRS::_initGyro()
 void MinIMU9AHRS::_initAccelerometer()
 {
   _accelerometer.init(LSM303DLHC_DEVICE, ACC_ADDRESS_SA0_A_HIGH);
-  //_accelerometer.enableDefault();
 
-  _accelerometer.writeAccReg(LSM303_CTRL_REG1_A, 0x47); // normal power mode, all axes enabled, 50 Hz
-  _accelerometer.writeAccReg(LSM303_CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10 on DLHC; high resolution output mode
+  if (_accelerometer.getDeviceType() == LSM303DLHC_DEVICE) {
+    _accelerometer.writeAccReg(LSM303_CTRL_REG1_A, 0x47); // normal power mode, all axes enabled, 50 Hz
+    _accelerometer.writeAccReg(LSM303_CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10 on DLHC; high resolution output mode
+  } else {
+    _accelerometer.writeAccReg(LSM303_CTRL_REG1_A, 0x27); // normal power mode, all axes enabled, 50 Hz
+    _accelerometer.writeAccReg(LSM303_CTRL_REG4_A, 0x30); // 8 g full scale: FS = 11 on DLH, DLM
+  }
+}
 
+
+/**
+ * Initialize the compass.
+ */
+void MinIMU9AHRS::_initCompass()
+{
   // NOTE(lbayes): Continuous conversion mode
   _accelerometer.writeMagReg(LSM303_MR_REG_M, 0x00);
 };
 
 
 /**
- * Initialize default offsets for each sensor.
+ * Initialize default offsets for the gyroscope and accelerometer. This is done
+ * by collecting a sampling of readings and storing their averages in the
+ * offsets collection, which is used when converting raw values to usable
+ * inputs.
  */
 void MinIMU9AHRS::_initOffsets()
 {
-  // NOTE(lbayes): This feature makes me sad because it increases system start
-  // time.
-  for (int i = 0; i < 32; i++) {
-    updateReadings();
+  int sampleSize = 32;
+  for (int i = 0; i < sampleSize; i++) {
+    _readGyro();
+    _readAccelerometer();
+
+    // Collect values on each axis for gyroscope and accelerometer.
     for (int y = 0; y < 6; y++) {
       _offsets[y] += _rawValues[y];
     }
     delay(20);
   }
     
+  // Average the collected values and store them.
   for(int y = 0; y < 6; y++) {
-    _offsets[y] = _offsets[y] / 32;
+    _offsets[y] = _offsets[y] / sampleSize;
   }
     
+  // NOTE(lbayes): Special handling for the accelerometer z axis.
   _offsets[5] -= GRAVITY * _sensorDirection[5];
-
-  _isInitialized = true;
 };
+
 
 /**
  * Get the most recent Euler angle (roll, pitch and yaw) from the AHRS.
@@ -201,32 +224,40 @@ EulerAngle MinIMU9AHRS::getEuler(void)
  */
 void MinIMU9AHRS::updateReadings(void)
 {
-  // NOTE(lbayes): We have a problem with timing here. We want to collect 
-  // readings from the gyro and accelerometer at one maximum rate, and
-  // from the compass at a different (slower) maximum rate.
-
   _currentReadingTime = millis();
 
-  // NOTE(lbayes): Don't read the gyro/accel faster than 100Hz
-  if (_isInitialized && _currentReadingTime - _lastReadingTime < _minGyroAndAccelTimeoutMillis) {
-    return;
-  }
+  if (_currentReadingTime - _lastReadingTime > DEFAULT_READING_TIMEOUT_MILLIS) {
+    _secondsSinceLastReading = (_currentReadingTime - _lastReadingTime) / 1000.0;
 
-  _readGyro();
-  _readAccelerometer();
-  
-  // Don't read the compass faster than 5Hz
-  if (_isInitialized && _currentReadingTime - _lastCompassReadingTime > 200) {
-    //_readCompass();
-    _lastCompassReadingTime = _currentReadingTime;
-  }
-  
-  _matrixUpdate();
-  _normalize();
-  _driftCorrection();
-  _updateEulerAngles();
+    // Read the gyroscope and accelerometer raw values.
+    _readGyro();
+    _readAccelerometer();
 
-  _lastReadingTime = _currentReadingTime;
+    // NOTE(lbayes): Consider pulling this out of the gyro/accel boundary because they are read
+    // at different rates, compass readings will be limited more than intended.
+    unsigned long millisSinceLastCompassReading = _currentReadingTime - _lastCompassReadingTime;
+    if (millisSinceLastCompassReading > DEFAULT_COMPASS_TIMEOUT_MILLIS) {
+      _readCompass();
+      _updateCompassHeading();
+      _lastCompassReadingTime = _currentReadingTime;
+    }
+    
+    _matrixUpdate();
+    _normalize();
+    _driftCorrection();
+    _updateEulerAngles();
+
+    Serial.print("!");
+    Serial.print("ANG:");
+    Serial.print(ToDeg(_euler.roll));
+    Serial.print(",");
+    Serial.print(ToDeg(_euler.pitch));
+    Serial.print(",");
+    Serial.print(ToDeg(_euler.yaw));
+    Serial.println();
+
+    _lastReadingTime = _currentReadingTime;
+  }
 };
 
 
@@ -236,22 +267,21 @@ void MinIMU9AHRS::updateReadings(void)
 void MinIMU9AHRS::_readGyro(void)
 {
   _gyroscope.read();
-
   _rawValues[0] = _gyroscope.g.x;
   _rawValues[1] = _gyroscope.g.y;
   _rawValues[2] = _gyroscope.g.z;
 
-  _gyroValue.x = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
-  _gyroValue.y = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
-  _gyroValue.z = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
+  _gyroValue[0] = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
+  _gyroValue[1] = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
+  _gyroValue[2] = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
 
   /*
   Serial.print("GYRO x: ");
-  Serial.print(_gyroValue.x);
+  Serial.print(_gyroValue[0]);
   Serial.print(" y: ");
-  Serial.print(_gyroValue.y);
+  Serial.print(_gyroValue[1]);
   Serial.print(" z: ");
-  Serial.println(_gyroValue.z);
+  Serial.println(_gyroValue[2]);
   */
 };
 
@@ -266,9 +296,9 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _rawValues[4] = _accelerometer.a.y;
   _rawValues[5] = _accelerometer.a.z;
 
-  _accelValue.x = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
-  _accelValue.y = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
-  _accelValue.z = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
+  _accelValue[0] = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
+  _accelValue[1] = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
+  _accelValue[2] = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
 };
 
 
@@ -278,11 +308,18 @@ void MinIMU9AHRS::_readAccelerometer(void)
 void MinIMU9AHRS::_readCompass(void)
 {
   _accelerometer.readMag();
-  _rawValues[6] = _accelerometer.m.x;
-  _rawValues[7] = _accelerometer.m.y;
-  _rawValues[8] = _accelerometer.m.z;
+  _compassValue[0] = _accelerometer.m.x;
+  _compassValue[1] = _accelerometer.m.y;
+  _compassValue[2] = _accelerometer.m.z;
 
-  _updateCompassHeading();
+  /*
+  Serial.print("COMPASS x: ");
+  Serial.print(_compassValue[0]);
+  Serial.print(" y: ");
+  Serial.print(_compassValue[1]);
+  Serial.print(" z: ");
+  Serial.println(_compassValue[2]);
+  */
 };
 
 
@@ -291,13 +328,13 @@ void MinIMU9AHRS::_readCompass(void)
  */
 void MinIMU9AHRS::_matrixUpdate(void)
 {
-  _gyroVector[0] = Gyro_Scaled_X(_gyroValue.x); //gyro x roll
-  _gyroVector[1] = Gyro_Scaled_Y(_gyroValue.y); //gyro y pitch
-  _gyroVector[2] = Gyro_Scaled_Z(_gyroValue.z); //gyro Z yaw
+  _gyroVector[0] = Gyro_Scaled_X(_gyroValue[0]); //gyro x roll
+  _gyroVector[1] = Gyro_Scaled_Y(_gyroValue[1]); //gyro y pitch
+  _gyroVector[2] = Gyro_Scaled_Z(_gyroValue[2]); //gyro Z yaw
 
-  _accelVector[0] = _accelValue.x;
-  _accelVector[1] = _accelValue.y;
-  _accelVector[2] = _accelValue.z;
+  _accelVector[0] = _accelValue[0];
+  _accelVector[1] = _accelValue[1];
+  _accelVector[2] = _accelValue[2];
     
   _vectorAdd(&_omega[0], &_gyroVector[0], &_omegaI[0]);  //adding proportional term
   _vectorAdd(&_omegaVector[0], &_omega[0], &_omegaP[0]); //adding Integrator term
@@ -308,27 +345,27 @@ void MinIMU9AHRS::_matrixUpdate(void)
   
  #if OUTPUTMODE == 1         
   _updateMatrix[0][0] = 0;
-  _updateMatrix[0][1] = -_integrationTime * _omegaVector[2]; //-z
-  _updateMatrix[0][2] = _integrationTime * _omegaVector[1]; //y
+  _updateMatrix[0][1] = -_secondsSinceLastReading * _omegaVector[2]; //-z
+  _updateMatrix[0][2] = _secondsSinceLastReading * _omegaVector[1]; //y
 
-  _updateMatrix[1][0] = _integrationTime * _omegaVector[2]; //z
+  _updateMatrix[1][0] = _secondsSinceLastReading * _omegaVector[2]; //z
   _updateMatrix[1][1] = 0;
-  _updateMatrix[1][2] = -_integrationTime * _omegaVector[0]; //-x
+  _updateMatrix[1][2] = -_secondsSinceLastReading * _omegaVector[0]; //-x
 
-  _updateMatrix[2][0] = -_integrationTime * _omegaVector[1]; //-y
-  _updateMatrix[2][1] = _integrationTime * _omegaVector[0]; //x
+  _updateMatrix[2][0] = -_secondsSinceLastReading * _omegaVector[1]; //-y
+  _updateMatrix[2][1] = _secondsSinceLastReading * _omegaVector[0]; //x
   _updateMatrix[2][2] = 0;
  #else // Uncorrected data (no drift correction)
   _updateMatrix[0][0] = 0;
-  _updateMatrix[0][1] = -_integrationTime * _gyroVector[2]; //-z
-  _updateMatrix[0][2] = _integrationTime * _gyroVector[1]; //y
+  _updateMatrix[0][1] = -_secondsSinceLastReading * _gyroVector[2]; //-z
+  _updateMatrix[0][2] = _secondsSinceLastReading * _gyroVector[1]; //y
 
-  _updateMatrix[1][0] = _integrationTime * _gyroVector[2]; //z
+  _updateMatrix[1][0] = _secondsSinceLastReading * _gyroVector[2]; //z
   _updateMatrix[1][1] = 0;
-  _updateMatrix[1][2] = -_integrationTime * _gyroVector[0];
+  _updateMatrix[1][2] = -_secondsSinceLastReading * _gyroVector[0];
 
-  _updateMatrix[2][0] = -_integrationTime * _gyroVector[1];
-  _updateMatrix[2][1] = _integrationTime * _gyroVector[0];
+  _updateMatrix[2][0] = -_secondsSinceLastReading * _gyroVector[1];
+  _updateMatrix[2][1] = _secondsSinceLastReading * _gyroVector[0];
   _updateMatrix[2][2] = 0;
  #endif
 
@@ -509,11 +546,31 @@ void MinIMU9AHRS::_updateCompassHeading()
   float sinRoll = sin(_euler.roll);
   float cosPitch = cos(_euler.pitch);
   float sinPitch = sin(_euler.pitch);
-  
+
+  /*
+  Serial.print("compass heading with: ");
+  Serial.print(" Euler roll: ");
+  Serial.print(_euler.roll);
+  Serial.print(" pitch: ");
+  Serial.print(_euler.pitch);
+  Serial.print(" yaw: ");
+  Serial.print(_euler.yaw);
+
+  Serial.print(" cosRoll: ");
+  Serial.print(cosRoll);
+  Serial.print(" sinRoll: ");
+  Serial.print(sinRoll);
+  Serial.print(" cosPitch: ");
+  Serial.print(cosPitch);
+  Serial.print(" sinPitch: ");
+  Serial.print(sinPitch);
+  Serial.println();
+  */
+
   // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
-  _compassVector[0] = (float)(_compassValue.x - _sensorDirection[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - _sensorDirection[6]*0.5;
-  _compassVector[1] = (float)(_compassValue.y - _sensorDirection[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - _sensorDirection[7]*0.5;
-  _compassVector[2] = (float)(_compassValue.z - _sensorDirection[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - _sensorDirection[8]*0.5;
+  _compassVector[0] = (float)(_compassValue[0] - _sensorDirection[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - _sensorDirection[6]*0.5;
+  _compassVector[1] = (float)(_compassValue[1] - _sensorDirection[7]*M_Y_MIN) / (M_Y_MAX - M_Y_MIN) - _sensorDirection[7]*0.5;
+  _compassVector[2] = (float)(_compassValue[2] - _sensorDirection[8]*M_Z_MIN) / (M_Z_MAX - M_Z_MIN) - _sensorDirection[8]*0.5;
   
   // Tilt compensated Magnetic filed X:
   magX = _compassVector[0] * cosPitch + _compassVector[1] * sinRoll * sinPitch + _compassVector[2] * cosRoll * sinPitch;
