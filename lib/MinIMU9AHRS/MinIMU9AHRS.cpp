@@ -68,6 +68,7 @@ void MinIMU9AHRS::_initValues(void)
   _dcmMatrix[2][1] = 0;
   _dcmMatrix[2][2] = 1;
 
+  /*
   _updateMatrix[0][0] = 0;
   _updateMatrix[0][1] = 1;
   _updateMatrix[0][2] = 2;
@@ -115,6 +116,7 @@ void MinIMU9AHRS::_initValues(void)
   _offsets[3] = 0; // accel x offset
   _offsets[4] = 0; // accel y offset
   _offsets[5] = 0; // accell z offset
+  */
 
   _euler.roll = 0;
   _euler.pitch = 0;
@@ -188,6 +190,8 @@ void MinIMU9AHRS::_initCompass()
  */
 void MinIMU9AHRS::_initOffsets()
 {
+  delay(20);
+
   int sampleSize = 32;
   for (int i = 0; i < sampleSize; i++) {
     _readGyro();
@@ -207,6 +211,8 @@ void MinIMU9AHRS::_initOffsets()
     
   // NOTE(lbayes): Special handling for the accelerometer z axis.
   _offsets[5] -= GRAVITY * _sensorDirection[5];
+
+  delay(2000);
 };
 
 
@@ -247,7 +253,6 @@ void MinIMU9AHRS::updateReadings(void)
     _driftCorrection();
     _updateEulerAngles();
 
-    /*
     Serial.print("!");
     Serial.print("ANG:");
     Serial.print(ToDeg(_euler.roll));
@@ -256,7 +261,6 @@ void MinIMU9AHRS::updateReadings(void)
     Serial.print(",");
     Serial.print(ToDeg(_euler.yaw));
     Serial.println();
-    */
 
     _lastReadingTime = _currentReadingTime;
   }
@@ -302,8 +306,7 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _accelValue[1] = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
   _accelValue[2] = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
 
-  Serial.print("!");
-  Serial.print("ANG:");
+  Serial.print("ACCEL:");
   Serial.print(_accelValue[0]);
   Serial.print(",");
   Serial.print(_accelValue[1]);
@@ -522,6 +525,7 @@ void MinIMU9AHRS::_driftCorrection(void)
 
   // Scale to gravity.
   accelMagnitude = accelMagnitude / GRAVITY;
+
   // Dynamic weighting of accelerometer info (reliability filter)
   // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)
   float accelWeight = constrain(1 - 2 * abs(1 - accelMagnitude), 0, 1);  //  
