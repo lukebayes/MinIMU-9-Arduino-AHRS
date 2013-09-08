@@ -116,24 +116,24 @@ void MinIMU9AHRS::_initValues(void)
   _offsets[3] = 0; // accel x offset
   _offsets[4] = 0; // accel y offset
   _offsets[5] = 0; // accell z offset
-  */
 
   _euler.roll = 0;
   _euler.pitch = 0;
   _euler.yaw = 0;
+  */
 
   // NOTE(lbayes): Invert the sign of any of these values to invert that axis
   // for the respective device.
   _sensorDirection[0] = 1; // gyro x
   _sensorDirection[1] = 1; // gyro y
   _sensorDirection[2] = 1; // gyro z
-  _sensorDirection[3] = -1; // accel x
-  _sensorDirection[4] = -1; // accel y
-  _sensorDirection[5] = -1; // accel z
+  _sensorDirection[3] = 1; // accel x
+  _sensorDirection[4] = 1; // accel y
+  _sensorDirection[5] = 1; // accel z
   _sensorDirection[6] = 1; // mag x
   _sensorDirection[7] = 1; // mag y
   _sensorDirection[8] = 1; // mag z
-
+  
   _lastReadingTime = 0;
   _lastCompassReadingTime = 0;
 };
@@ -190,7 +190,7 @@ void MinIMU9AHRS::_initCompass()
  */
 void MinIMU9AHRS::_initOffsets()
 {
-  delay(20);
+  delay(1500);
 
   int sampleSize = 32;
   for (int i = 0; i < sampleSize; i++) {
