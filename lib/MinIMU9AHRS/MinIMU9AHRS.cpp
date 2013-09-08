@@ -68,60 +68,6 @@ void MinIMU9AHRS::_initValues(void)
   _dcmMatrix[2][1] = 0;
   _dcmMatrix[2][2] = 1;
 
-  /*
-  _updateMatrix[0][0] = 0;
-  _updateMatrix[0][1] = 1;
-  _updateMatrix[0][2] = 2;
-  _updateMatrix[1][0] = 3;
-  _updateMatrix[1][1] = 4;
-  _updateMatrix[1][2] = 5;
-  _updateMatrix[2][0] = 6;
-  _updateMatrix[2][1] = 7;
-  _updateMatrix[2][2] = 8;
-
-  _tempMatrix[0][0] = 0;
-  _tempMatrix[0][1] = 0;
-  _tempMatrix[0][2] = 0;
-  _tempMatrix[1][0] = 0;
-  _tempMatrix[1][1] = 0;
-  _tempMatrix[1][2] = 0;
-  _tempMatrix[2][0] = 0;
-  _tempMatrix[2][1] = 0;
-  _tempMatrix[2][2] = 0;
-
-  _errorRollPitch[0] = 0;
-  _errorRollPitch[1] = 0;
-  _errorRollPitch[2] = 0;
-
-  _errorYaw[0] = 0;
-  _errorYaw[1] = 0;
-  _errorYaw[2] = 0;
-
-  _omegaP[0] = 0;
-  _omegaP[1] = 0;
-  _omegaP[2] = 0;
-
-  _omegaI[0] = 0;
-  _omegaI[1] = 0;
-  _omegaI[2] = 0;
-
-  _omega[0] = 0;
-  _omega[1] = 0;
-  _omega[2] = 0;
-
-  // TODO(lbayes): Fix this syntax here, should be _offets = {0, 0, ...etc};
-  _offsets[0] = 0; // gyro x offset
-  _offsets[1] = 0; // gyro y offset
-  _offsets[2] = 0; // gyro z offset
-  _offsets[3] = 0; // accel x offset
-  _offsets[4] = 0; // accel y offset
-  _offsets[5] = 0; // accell z offset
-
-  _euler.roll = 0;
-  _euler.pitch = 0;
-  _euler.yaw = 0;
-  */
-
   // NOTE(lbayes): Invert the sign of any of these values to invert that axis
   // for the respective device.
   _sensorDirection[0] = 1; // gyro x
@@ -280,15 +226,6 @@ void MinIMU9AHRS::_readGyro(void)
   _gyroValue[0] = _sensorDirection[0] * (_rawValues[0] - _offsets[0]);
   _gyroValue[1] = _sensorDirection[1] * (_rawValues[1] - _offsets[1]);
   _gyroValue[2] = _sensorDirection[2] * (_rawValues[2] - _offsets[2]);
-
-  /*
-  Serial.print("GYRO x: ");
-  Serial.print(_gyroValue[0]);
-  Serial.print(" y: ");
-  Serial.print(_gyroValue[1]);
-  Serial.print(" z: ");
-  Serial.println(_gyroValue[2]);
-  */
 };
 
 
@@ -305,14 +242,6 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _accelValue[0] = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
   _accelValue[1] = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
   _accelValue[2] = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
-
-  Serial.print("ACCEL:");
-  Serial.print(_accelValue[0]);
-  Serial.print(",");
-  Serial.print(_accelValue[1]);
-  Serial.print(",");
-  Serial.print(_accelValue[2]);
-  Serial.println();
 };
 
 
@@ -325,15 +254,6 @@ void MinIMU9AHRS::_readCompass(void)
   _compassValue[0] = _accelerometer.m.x;
   _compassValue[1] = _accelerometer.m.y;
   _compassValue[2] = _accelerometer.m.z;
-
-  /*
-  Serial.print("COMPASS x: ");
-  Serial.print(_compassValue[0]);
-  Serial.print(" y: ");
-  Serial.print(_compassValue[1]);
-  Serial.print(" z: ");
-  Serial.println(_compassValue[2]);
-  */
 };
 
 
@@ -390,16 +310,6 @@ void MinIMU9AHRS::_matrixUpdate(void)
       _dcmMatrix[x][y] += _tempMatrix[x][y];
     } 
   }
-
-  /*
-  Serial.print("x: ");
-  Serial.print(_dcmMatrix[0][0]);
-  Serial.print(" y: ");
-  Serial.print(_dcmMatrix[0][1]);
-  Serial.print(" z: ");
-  Serial.print(_dcmMatrix[0][2]);
-  Serial.println();
-  */
 };
 
 
@@ -568,26 +478,6 @@ void MinIMU9AHRS::_updateCompassHeading()
   float sinRoll = sin(_euler.roll);
   float cosPitch = cos(_euler.pitch);
   float sinPitch = sin(_euler.pitch);
-
-  /*
-  Serial.print("compass heading with: ");
-  Serial.print(" Euler roll: ");
-  Serial.print(_euler.roll);
-  Serial.print(" pitch: ");
-  Serial.print(_euler.pitch);
-  Serial.print(" yaw: ");
-  Serial.print(_euler.yaw);
-
-  Serial.print(" cosRoll: ");
-  Serial.print(cosRoll);
-  Serial.print(" sinRoll: ");
-  Serial.print(sinRoll);
-  Serial.print(" cosPitch: ");
-  Serial.print(cosPitch);
-  Serial.print(" sinPitch: ");
-  Serial.print(sinPitch);
-  Serial.println();
-  */
 
   // adjust for LSM303 compass axis offsets/sensitivity differences by scaling to +/-0.5 range
   _compassVector[0] = (float)(_compassValue[0] - _sensorDirection[6]*M_X_MIN) / (M_X_MAX - M_X_MIN) - _sensorDirection[6]*0.5;
