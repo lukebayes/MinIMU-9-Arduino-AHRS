@@ -17,7 +17,6 @@ void setup()
 void loop()
 {
   ahrs.updateReadings();
-  delay(10);
 
   // EulerAngle euler = ahrs.getEuler();
 

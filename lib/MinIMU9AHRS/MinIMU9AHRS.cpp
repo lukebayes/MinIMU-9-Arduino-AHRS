@@ -247,6 +247,7 @@ void MinIMU9AHRS::updateReadings(void)
     _driftCorrection();
     _updateEulerAngles();
 
+    /*
     Serial.print("!");
     Serial.print("ANG:");
     Serial.print(ToDeg(_euler.roll));
@@ -255,6 +256,7 @@ void MinIMU9AHRS::updateReadings(void)
     Serial.print(",");
     Serial.print(ToDeg(_euler.yaw));
     Serial.println();
+    */
 
     _lastReadingTime = _currentReadingTime;
   }
@@ -299,6 +301,15 @@ void MinIMU9AHRS::_readAccelerometer(void)
   _accelValue[0] = _sensorDirection[3] * (_rawValues[3] - _offsets[3]);
   _accelValue[1] = _sensorDirection[4] * (_rawValues[4] - _offsets[4]);
   _accelValue[2] = _sensorDirection[5] * (_rawValues[5] - _offsets[5]);
+
+  Serial.print("!");
+  Serial.print("ANG:");
+  Serial.print(_accelValue[0]);
+  Serial.print(",");
+  Serial.print(_accelValue[1]);
+  Serial.print(",");
+  Serial.print(_accelValue[2]);
+  Serial.println();
 };
 
 
@@ -497,18 +508,23 @@ void MinIMU9AHRS::_driftCorrection(void)
   float magHeadingY;
   float errorCourse;
 
-  // Compensation the Roll, Pitch and Yaw drift. 
+  // Compensate the Roll, Pitch and Yaw drift. 
   static float scaledOmegaP[3];
   static float scaledOmegaI[3];
-  float accelMagnitude;
-  float accelWeight;
+  
+  /* Calculate Roll and Pitch */
   
   // Calculate the magnitude of the accelerometer vector
-  accelMagnitude = sqrt(_accelVector[0]*_accelVector[0] + _accelVector[1]*_accelVector[1] + _accelVector[2]*_accelVector[2]);
-  accelMagnitude = accelMagnitude / GRAVITY; // Scale to gravity.
+  float accelMagnitude = sqrt(
+      (_accelVector[0] * _accelVector[0]) +
+      (_accelVector[1] * _accelVector[1]) +
+      (_accelVector[2] * _accelVector[2]));
+
+  // Scale to gravity.
+  accelMagnitude = accelMagnitude / GRAVITY;
   // Dynamic weighting of accelerometer info (reliability filter)
   // Weight for accelerometer info (<0.5G = 0.0, 1G = 1.0 , >1.5G = 0.0)
-  accelWeight = constrain(1 - 2*abs(1 - accelMagnitude), 0, 1);  //  
+  float accelWeight = constrain(1 - 2 * abs(1 - accelMagnitude), 0, 1);  //  
 
   // Adjust the ground of reference.
   _vectorCrossProduct(&_errorRollPitch[0], &_accelVector[0], &_dcmMatrix[2][0]);
@@ -517,11 +533,13 @@ void MinIMU9AHRS::_driftCorrection(void)
   _vectorScale(&scaledOmegaI[0], &_errorRollPitch[0], Ki_ROLLPITCH * accelWeight);
   _vectorAdd(_omegaI, _omegaI, scaledOmegaI);     
   
+  /* Calculate Yaw */
+
   // We make the gyro YAW drift correction based on compass magnetic heading
   magHeadingX = cos(_magHeading);
   magHeadingY = sin(_magHeading);
   // Calculate YAW error.
-  errorCourse=(_dcmMatrix[0][0]*magHeadingY) - (_dcmMatrix[1][0]*magHeadingX);
+  errorCourse=(_dcmMatrix[0][0] * magHeadingY) - (_dcmMatrix[1][0] * magHeadingX);
   // Apply the yaw correction to the XYZ rotation of the aircraft, depeding the position.
   _vectorScale(_errorYaw, &_dcmMatrix[2][0], errorCourse);
   // .01 proportional of YAW.
